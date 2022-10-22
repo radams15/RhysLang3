@@ -26,8 +26,44 @@ def function_decl(p):
 def statement(p):
     return Return(p[1])
 
-@pg.production('expr : expr PLUS expr | expr MINUS expr | term')
+@pg.production('expr : logical_and | logical_and OR logical_and')
 def expression(p):
+    if len(p) == 1:  # Just term
+        return p[0]
+
+    elif len(p) == 3:  # Unary
+        left, op, right = p[:3]
+        return Binary.choose(op, left, right)
+
+@pg.production('logical_and : equality | equality AND equality')
+def logical_and(p):
+    if len(p) == 1:  # Just term
+        return p[0]
+
+    elif len(p) == 3:  # Unary
+        left, op, right = p[:3]
+        return Binary.choose(op, left, right)
+
+@pg.production('equality : relational | relational equality_op relational')
+def equality(p):
+    if len(p) == 1:  # Just term
+        return p[0]
+
+    elif len(p) == 3:  # Unary
+        left, op, right = p[:3]
+        return Binary.choose(op, left, right)
+
+@pg.production('relational : additive | additive relational_op additive')
+def relational(p):
+    if len(p) == 1:  # Just term
+        return p[0]
+
+    elif len(p) == 3:  # Unary
+        left, op, right = p[:3]
+        return Binary.choose(op, left, right)
+
+@pg.production('additive : term | term binary_op_1 term')
+def additive(p):
     if len(p) == 1: # Just term
         return p[0]
 
@@ -35,7 +71,7 @@ def expression(p):
         left, op, right = p[:3]
         return Binary.choose(op, left, right)
 
-@pg.production('term : term MULTIPLY term | term DIVIDE term | factor')
+@pg.production('term : term binary_op_2 term | factor')
 def term(p):
     if len(p) == 1:  # Just factor
         return p[0]
@@ -60,8 +96,19 @@ def factor(p):
 def unary_op(p):
     return p[0]
 
-@pg.production('binary_op : PLUS | MINUS | MULTIPLY | DIVIDE')
-def binary_op(p):
+@pg.production('binary_op_1 : PLUS | MINUS')
+def binary_op_1(p):
+    return p[0]
+@pg.production('binary_op_2 : MULTIPLY | DIVIDE')
+def binary_op_2(p):
+    return p[0]
+
+@pg.production('relational_op : LESS_THAN | GREATER_THAN | LESS_THAN_EQUAL | GREATER_THAN_EQUAL')
+def relational_op(p):
+    return p[0]
+
+@pg.production('equality_op : EQUAL_EQUAL | NOT_EQUAL')
+def equality_op(p):
     return p[0]
 
 parser = pg.build()

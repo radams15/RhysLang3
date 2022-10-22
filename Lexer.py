@@ -7,7 +7,7 @@ lg.add('INT', r'\d+')
 
 lg.add('AND', r'and')
 lg.add('OR', r'or')
-lg.add('EQUAL', r'==')
+lg.add('EQUAL_EQUAL', r'==')
 lg.add('NOT_EQUAL', r'!=')
 
 
@@ -24,7 +24,7 @@ lg.add('LESS_THAN_EQUAL', r'<=')
 lg.add('GREATER_THAN_EQUAL', r'>=')
 lg.add('LESS_THAN', r'<')
 lg.add('GREATER_THAN', r'>')
-lg.add('ASSIGN', r'=')
+lg.add('EQUAL', r'=')
 
 lg.add('SEMICOLON', r';')
 lg.add('COLON', r':')
