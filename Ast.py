@@ -12,9 +12,57 @@ class LabelGenerator:
         start = self.generate(type)
         return (start, start+'_end')
 
+class Scope:
+    def __init__(self, parent=None, index=0):
+        self.values = dict()
+        self.parent = parent
+
+        self.index = 0
+
+    def child(self):
+        return Scope(self)
+
+    def _set(self, name, value):
+        self.values[name] = value
+
+    def set(self, name, value):
+        owner = self.find_owner(name)
+
+        if not owner:
+            owner = self
+
+        owner._set(name, value)
+
+    def contains(self, name):
+        return name in self.values
+
+    def find_owner(self, name):
+        if self.contains(name):
+            return self
+
+        if self.parent:
+            return self.parent.find_owner(name)
+
+    def _get(self, name):
+        return self.values[name]
+
+    def get(self, name):
+        owner = self.find_owner(name)
+
+        if owner:
+            return owner._get(name)
+
+        raise Exception("Unknown variable: {}".format(name))
+
+scope = Scope()
+
+int_size = 8
+
+var_map = dict()
+stack_index = -int_size
+
 
 label_generator = LabelGenerator()
-
 
 class Program(BaseBox):
     def __init__(self, function):
@@ -36,18 +84,31 @@ class Program(BaseBox):
         writer.writeln('syscall')
 
 class Function(BaseBox):
-    def __init__(self, name, return_val, statement):
+    def __init__(self, name, return_val, statements):
         self.name = name
         self.return_val = return_val
-        self.statement = statement
+        self.statements = statements
 
     def visit(self, writer):
+        global scope
+
         writer.writeln(f'global {self.name.value}')
         writer.writeln(f'{self.name.value}:')
         writer.ident += 1
 
-        self.statement.visit(writer)
+        writer.writeln(f'push rbp')
+        writer.writeln(f'mov rbp, rsp')
 
+        scope = scope.child()
+
+        for stmt in self.statements:
+            stmt.visit(writer)
+
+        if type(self.statements[-1]) != Return:
+            ret_stmt = Return(Constant(0))
+            ret_stmt.visit(writer)
+
+        scope = scope.parent
 
 class Statement(BaseBox):
     pass
@@ -61,7 +122,11 @@ class Return(Statement):
 
     def visit(self, writer):
         self.expr.visit(writer)
-        writer.writeln('ret')
+
+        writer.writeln(f'mov rsp, rbp')
+        writer.writeln(f'pop rbp')
+
+        writer.writeln(f'ret')
 
 class Unary(Expression):
     def __init__(self, operator, expr):
@@ -258,4 +323,44 @@ class Constant(Expression):
         self.value = value
 
     def visit(self, writer):
-        writer.writeln(f'mov rax, {self.value.value}')
+        if self.value.name == 'IDENTIFIER':
+            offset = var_map[self.value.value]
+
+            writer.writeln(f'mov rax, [rbp+{offset}]')
+        else:
+            writer.writeln(f'mov rax, {self.value.value}')
+
+    def size(self):
+        return 8
+
+class Declaration(Expression):
+    def __init__(self, name, type, initialiser=None):
+        self.name = name
+        self.type = type
+        self.initialiser = initialiser
+
+    def visit(self, writer):
+        global stack_index, var_map
+
+        if self.initialiser:
+            self.initialiser.visit(writer)
+
+        offset = stack_index
+
+        writer.writeln('push rax')
+
+        var_map[self.name.value] = offset
+
+        stack_index -= int_size
+
+class Assignment(Expression):
+    def __init__(self, name, type, expr):
+        self.name = name
+        self.expr = expr
+
+    def visit(self, writer):
+        global var_map
+
+        offset = var_map.get(self.name)
+
+        writer.writeln(f'mov [rbp+{offset}], rax')
