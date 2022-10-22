@@ -26,8 +26,26 @@ def function_decl(p):
 def statement(p):
     return Return(p[1])
 
-@pg.production('expr : expr binary_op expr | unary_op expr | INT')
+@pg.production('expr : expr PLUS expr | expr MINUS expr | term')
 def expression(p):
+    if len(p) == 1: # Just term
+        return p[0]
+
+    elif len(p) == 3: # Unary
+        left, op, right = p[:3]
+        return Binary.choose(op, left, right)
+
+@pg.production('term : term MULTIPLY term | term DIVIDE term | factor')
+def term(p):
+    if len(p) == 1:  # Just factor
+        return p[0]
+
+    elif len(p) == 3:  # term with signs
+        left, op, right = p[:3]
+        return Binary.choose(op, left, right)
+
+@pg.production('factor : PAREN_OPEN expr PAREN_CLOSE | unary_op factor | INT')
+def factor(p):
     if len(p) == 1: # Just int
         return Constant(p[0])
 
@@ -36,9 +54,7 @@ def expression(p):
         return Unary.choose(op, expr)
 
     elif len(p) == 3: # Binary
-        left, op, right = p[:3]
-        return Binary.choose(op, left, right)
-
+        return p[1]
 
 @pg.production('unary_op : EXCLAMATION | TILDE | MINUS')
 def unary_op(p):
