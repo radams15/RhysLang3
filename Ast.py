@@ -1,4 +1,5 @@
-from rply.token import BaseBox
+from rply.token import BaseBox, Token
+
 
 class LabelGenerator:
     def __init__(self, start=0):
@@ -75,9 +76,12 @@ class Program(BaseBox):
         self.function = function
 
     def visit(self, writer):
-        self.function.visit(writer)
+        with open('x86_boilerplate.nasm', 'r') as f:
+            writer.writeln(f.read() + '\n')
 
-        writer.ident -= 1
+        #writer.ident -= 1
+
+        self.function.visit(writer)
 
         '''writer.writeln('')
         writer.writeln('global _start')
@@ -89,14 +93,11 @@ class Program(BaseBox):
         writer.writeln('mov rax, 60') # Move exit syscall code into rax
         writer.writeln('syscall')'''
 
-        with open('x86_boilerplate.nasm', 'r') as f:
-            writer.writeln(f.read() + '\n')
-
 class Function(BaseBox):
-    def __init__(self, name, return_val, statements):
+    def __init__(self, name, return_val, block):
         self.name = name
         self.return_val = return_val
-        self.statements = statements
+        self.block = block
 
     def visit(self, writer):
         global scope
@@ -110,12 +111,10 @@ class Function(BaseBox):
 
         scope = scope.child()
 
-        for stmt in self.statements:
-            stmt.visit(writer)
+        self.block.visit(writer)
 
-        if type(self.statements[-1]) != Return:
-            ret_stmt = Return(Constant(0))
-            ret_stmt.visit(writer)
+        ret_stmt = Return(Constant(Token('INT', 0)))
+        ret_stmt.visit(writer)
 
         scope = scope.parent
 
@@ -389,3 +388,59 @@ class Assignment(Expression):
         offset = var_map.get(self.name)
 
         writer.writeln(f'mov [rbp+{offset}], rax')
+
+
+class If(Statement):
+    def __init__(self, expr, true_stmt, false_stmt=None):
+        self.expr = expr
+        self.true_stmt = true_stmt
+        self.false_stmt = false_stmt
+
+    def visit(self, writer):
+        self.expr.visit(writer)
+
+        start, end = label_generator.generate_both('if')
+
+        writer.writeln('cmp rax, 0')
+        writer.writeln('je {}'.format(start), 'Jump to 2nd stmt if expr is false')
+        self.true_stmt.visit(writer)
+        writer.writeln('jmp {}'.format(end), 'Jump to end after setting rax to 1st stmr')
+
+        writer.writeln('{}:'.format(start), ident_inc=-1)
+        self.false_stmt.visit(writer)
+
+        writer.writeln('{}:'.format(end), ident_inc=-1)
+
+
+class Ternary(Expression):
+    def __init__(self, expr, true_expr, false_expr=None):
+        self.expr = expr
+        self.true_expr = true_expr
+        self.false_expr = false_expr
+
+    def visit(self, writer):
+        self.expr.visit(writer)
+
+        start, end = label_generator.generate_both('ternary')
+
+        writer.writeln('cmp rax, 0')
+        writer.writeln('je {}'.format(start), 'Jump to 2nd expr if expr is false')
+        self.true_expr.visit(writer)
+        writer.writeln('jmp {}'.format(end), 'Jump to end after setting rax to 1st expr')
+
+        writer.writeln('{}:'.format(start), ident_inc=-1)
+        self.false_expr.visit(writer)
+
+        writer.writeln('{}:'.format(end), ident_inc=-1)
+
+
+class Block(Statement):
+    def __init__(self, statements):
+        if type(statements) == list:
+            self.statements = statements
+        else:
+            self.statements = [statements]
+
+    def visit(self, writer):
+        for stmt in self.statements:
+            stmt.visit(writer)

@@ -20,10 +20,9 @@ pg = ParserGenerator(
 def program(p):
     return Program(p[0])
 
-@pg.production('function : FN IDENTIFIER PAREN_OPEN PAREN_CLOSE SINGLE_ARROW type BRACE_OPEN statements BRACE_CLOSE')
+@pg.production('function : FN IDENTIFIER PAREN_OPEN PAREN_CLOSE SINGLE_ARROW type block')
 def function_decl(p):
-    print('Fun Decl: ', p[7])
-    return Function(p[1], p[5], p[7])
+    return Function(p[1], p[5], p[6])
 
 def flatten_list(inp, out):
     for item in inp:
@@ -32,39 +31,57 @@ def flatten_list(inp, out):
         else:
             out.append(item)
 
-@pg.production('statements : statement SEMICOLON | statements statement SEMICOLON')
+@pg.production('statements : statement | statements statement')
 def statements(p):
-    if len(p) == 2:
+    if len(p) == 1:
         return p[0]
 
     stmts = []
 
-    flatten_list(p[:-1], stmts)
+    flatten_list(p, stmts)
 
     return stmts
 
-@pg.production('statement : RETURN expr | expr | IDENTIFIER | IDENTIFIER EQUAL expr')
+@pg.production('block : BRACE_OPEN statements BRACE_CLOSE')
+def block(p):
+    return Block(p[1])
+
+@pg.production('statement : RETURN expr SEMICOLON | expr SEMICOLON | IF PAREN_OPEN expr PAREN_CLOSE block | IF PAREN_OPEN expr PAREN_CLOSE block ELSE block')
 def statement(p):
     if p[0].name == 'RETURN':
         return Return(p[1])
 
-    if len(p) == 3:
-        return Assignment(p[0], p[2])
+    if len(p) == 5:
+        return If(p[2], p[4])
+
+    if len(p) == 7:
+        return If(p[2], p[4], p[6])
 
     return p[0]
 
-@pg.production('expr : VAR IDENTIFIER COLON type | VAR IDENTIFIER COLON type EQUAL expr | logical_or')
+@pg.production('expr : VAR IDENTIFIER COLON type | VAR IDENTIFIER COLON type EQUAL expr | IDENTIFIER EQUAL expr | ternary')
 def expression(p):
-    if len(p) == 1:  # Just or
+    if len(p) == 1:  # Just ternary
         return p[0]
 
     elif len(p) == 4:  # Declaration
         name, type = p[1], p[3]
         return Declaration(name, type)
 
+    elif len(p) == 3: # Assignment
+            return Assignment(p[0], p[2])
+
     elif len(p) == 6:  # Definition
         name, type, expr = p[1], p[3], p[5]
         return Declaration(name, type, expr)
+
+@pg.production('ternary : logical_or | logical_or QUESTION expr COLON ternary')
+def ternary(p):
+    if len(p) == 1:  # Just or
+        return p[0]
+
+    else:
+        return Ternary(p[0], p[2], p[4])
 
 @pg.production('logical_or : logical_and | logical_and OR logical_and')
 def logical_or(p):
