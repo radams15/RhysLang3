@@ -46,16 +46,48 @@ def statements(p):
 def block(p):
     return Block(p[1])
 
-@pg.production('statement : RETURN expr SEMICOLON | expr SEMICOLON | IF PAREN_OPEN expr PAREN_CLOSE block | IF PAREN_OPEN expr PAREN_CLOSE block ELSE block')
+@pg.production('statement : RETURN expr SEMICOLON |' +
+               'expr SEMICOLON |' +
+               'IF PAREN_OPEN expr PAREN_CLOSE block |' +
+               'IF PAREN_OPEN expr PAREN_CLOSE block ELSE block |' +
+               'FOR PAREN_OPEN expr SEMICOLON expr SEMICOLON expr PAREN_CLOSE block |' +
+               'WHILE PAREN_OPEN expr PAREN_CLOSE block' +
+               '')
 def statement(p):
     if p[0].name == 'RETURN':
         return Return(p[1])
 
     if len(p) == 5:
-        return If(p[2], p[4])
+        if p[0].name == 'IF':
+            return If(p[2], p[4])
+        elif p[0].name == 'WHILE':
+            return Loop(p[2], p[4])
+        else:
+            print('UNKNOWN:', p[0])
 
     if len(p) == 7:
         return If(p[2], p[4], p[6])
+
+    if len(p) == 9:
+        init, constraint, inc, body = p[2], p[4], p[6], p[8]
+
+        body = Block(
+            [
+                body,
+                inc
+            ]
+        )
+
+        body = Loop(constraint, body)
+
+        body = Block(
+            [
+                init,
+                body
+            ]
+        )
+
+        return body
 
     return p[0]
 
@@ -103,7 +135,7 @@ def logical_and(p):
 
 @pg.production('equality : relational | relational equality_op relational')
 def equality(p):
-    if len(p) == 1:  # Just term
+    if len(p) == 1:  # Just relational
         return p[0]
 
     elif len(p) == 3:  # Unary

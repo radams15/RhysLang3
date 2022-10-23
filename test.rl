@@ -1,13 +1,13 @@
 fn main() -> int {
-    var a1: int = 8;
-    var a2: int = 4<2? 3 : 4;
+    var out: int = 0;
 
-    if(2==2){
-        var c: int = 3;
-        return a2;
-    }else {
-        return 1;
+    for(var i: int=1 ; i<=10 ; i = i+1){
+        if(i == 1){
+            out = out + 100;
+        }else{
+            out = out + i;
+        }
     }
 
-    return a2;
+    return out;
 }

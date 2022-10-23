@@ -385,9 +385,11 @@ class Assignment(Expression):
     def visit(self, writer):
         global var_map
 
-        offset = var_map.get(self.name)
+        self.expr.visit(writer)
 
-        writer.writeln(f'mov [rbp+{offset}], rax')
+        offset = var_map.get(self.name.value)
+
+        writer.writeln(f'mov [rbp+{offset}], rax', 'Assign {} to rax'.format(self.name.value))
 
 
 class If(Statement):
@@ -407,7 +409,9 @@ class If(Statement):
         writer.writeln('jmp {}'.format(end), 'Jump to end after setting rax to 1st stmr')
 
         writer.writeln('{}:'.format(start), ident_inc=-1)
-        self.false_stmt.visit(writer)
+
+        if self.false_stmt:
+            self.false_stmt.visit(writer)
 
         writer.writeln('{}:'.format(end), ident_inc=-1)
 
@@ -444,3 +448,23 @@ class Block(Statement):
     def visit(self, writer):
         for stmt in self.statements:
             stmt.visit(writer)
+
+class Loop(Statement):
+    def __init__(self, expr, body):
+        self.expr = expr
+        self.body = body
+
+    def visit(self, writer):
+        start, end = label_generator.generate_both('loop')
+
+        writer.writeln('{}:'.format(start), ident_inc=-1)
+
+        self.expr.visit(writer)
+        writer.writeln('cmp rax, 0')
+        writer.writeln('je {}'.format(end), 'Jump to end if expr is false')
+
+        self.body.visit(writer)
+
+        writer.writeln('jmp {}'.format(start), 'Jump to start again as expr was true last run')
+
+        writer.writeln('{}:'.format(end), ident_inc=-1)
