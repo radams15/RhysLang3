@@ -41,8 +41,6 @@ def statements(p):
 
     flatten_list(p[:-1], stmts)
 
-    print(p[:-1], stmts)
-
     return stmts
 
 @pg.production('statement : RETURN expr | expr | IDENTIFIER | IDENTIFIER EQUAL expr')
@@ -125,7 +123,10 @@ def term(p):
 @pg.production('factor : PAREN_OPEN expr PAREN_CLOSE | unary_op factor | INT | IDENTIFIER')
 def factor(p):
     if len(p) == 1: # Just int
-        return Constant(p[0])
+        if p[0].name in ('INT', 'FLOAT'):
+            return Constant(p[0])
+        else:
+            return Variable(p[0])
 
     elif len(p) == 2: # Unary
         op, expr = p[:2]
@@ -141,7 +142,7 @@ def unary_op(p):
 @pg.production('binary_op_1 : PLUS | MINUS')
 def binary_op_1(p):
     return p[0]
-@pg.production('binary_op_2 : MULTIPLY | DIVIDE')
+@pg.production('binary_op_2 : MULTIPLY | DIVIDE | EXPONENT')
 def binary_op_2(p):
     return p[0]
 

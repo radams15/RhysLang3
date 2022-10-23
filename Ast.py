@@ -61,8 +61,14 @@ int_size = 8
 var_map = dict()
 stack_index = -int_size
 
-
 label_generator = LabelGenerator()
+
+def sizeof(type):
+    if type == 'int':
+        return 8
+
+    else:
+        raise Exception('Unknown type: {}'.format(type))
 
 class Program(BaseBox):
     def __init__(self, function):
@@ -73,7 +79,7 @@ class Program(BaseBox):
 
         writer.ident -= 1
 
-        writer.writeln('')
+        '''writer.writeln('')
         writer.writeln('global _start')
         writer.writeln('_start:') # Make start function to call main then exit normally
         writer.ident += 1
@@ -81,7 +87,10 @@ class Program(BaseBox):
         writer.writeln('')
         writer.writeln('mov rdi, rax') # Move main return value into exit syscall arg
         writer.writeln('mov rax, 60') # Move exit syscall code into rax
-        writer.writeln('syscall')
+        writer.writeln('syscall')'''
+
+        with open('x86_boilerplate.nasm', 'r') as f:
+            writer.writeln(f.read() + '\n')
 
 class Function(BaseBox):
     def __init__(self, name, return_val, statements):
@@ -181,6 +190,9 @@ class Binary(Expression):
 
         elif operator.name == 'MULTIPLY':
             return Multiplication(operator, left, right)
+
+        elif operator.name == 'EXPONENT':
+            return Exponent(operator, left, right)
 
         elif operator.name == 'DIVIDE':
             return Division(operator, left, right)
@@ -306,6 +318,15 @@ class Multiplication(Binary):
 
         writer.writeln('imul rax, rcx')
 
+class Exponent(Binary):
+    def visit(self, writer):
+        self.left.visit(writer)
+        writer.writeln('push rax')
+        self.right.visit(writer)
+        writer.writeln('pop rcx')
+
+        writer.writeln('call exponent')
+
 class Division(Binary):
     def visit(self, writer):
         self.right.visit(writer)
@@ -316,19 +337,21 @@ class Division(Binary):
 
         writer.writeln('idiv rcx')
 
+class Variable(Expression):
+    def __init__(self, name):
+        self.name = name
 
+    def visit(self, writer):
+        offset = var_map[self.name.value]
+
+        writer.writeln(f'mov rax, [rbp+{offset}]')
 
 class Constant(Expression):
     def __init__(self, value):
         self.value = value
 
     def visit(self, writer):
-        if self.value.name == 'IDENTIFIER':
-            offset = var_map[self.value.value]
-
-            writer.writeln(f'mov rax, [rbp+{offset}]')
-        else:
-            writer.writeln(f'mov rax, {self.value.value}')
+        writer.writeln(f'mov rax, {self.value.value}')
 
     def size(self):
         return 8
@@ -345,16 +368,18 @@ class Declaration(Expression):
         if self.initialiser:
             self.initialiser.visit(writer)
 
+        size = sizeof(self.type.value)
+
         offset = stack_index
 
-        writer.writeln('push rax')
+        writer.writeln('push rax', 'push variable {} of size {} onto stack'.format(self.name.value, size))
 
         var_map[self.name.value] = offset
 
-        stack_index -= int_size
+        stack_index -= size
 
 class Assignment(Expression):
-    def __init__(self, name, type, expr):
+    def __init__(self, name, expr):
         self.name = name
         self.expr = expr
 

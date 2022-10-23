@@ -8,8 +8,8 @@ class Writer:
     def write(self, data):
         print(data, end='', file=self.file)
 
-    def writeln(self, data, ident_inc=0):
-        print((self.ident_char*(self.ident+ident_inc)) + data, file=self.file)
+    def writeln(self, data, comment='', ident_inc=0):
+        print((self.ident_char*(self.ident+ident_inc)) + data + ('\t; {}'.format(comment) if comment else ''), file=self.file)
 
     def close(self):
         self.file.close()
