@@ -18,6 +18,8 @@ class Scope:
         self.values = dict()
         self.parent = parent
 
+        self.stack_index = -8
+
         self.index = 0
 
     def child(self):
@@ -59,8 +61,7 @@ scope = Scope()
 
 int_size = 8
 
-var_map = dict()
-stack_index = -int_size
+ARG_REGISTERS = ['rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9']
 
 label_generator = LabelGenerator()
 
@@ -72,31 +73,22 @@ def sizeof(type):
         raise Exception('Unknown type: {}'.format(type))
 
 class Program(BaseBox):
-    def __init__(self, function):
-        self.function = function
+    def __init__(self, functions):
+        self.functions = functions
 
     def visit(self, writer):
         with open('x86_boilerplate.nasm', 'r') as f:
             writer.writeln(f.read() + '\n')
 
-        #writer.ident -= 1
-
-        self.function.visit(writer)
-
-        '''writer.writeln('')
-        writer.writeln('global _start')
-        writer.writeln('_start:') # Make start function to call main then exit normally
-        writer.ident += 1
-        writer.writeln('call main')
-        writer.writeln('')
-        writer.writeln('mov rdi, rax') # Move main return value into exit syscall arg
-        writer.writeln('mov rax, 60') # Move exit syscall code into rax
-        writer.writeln('syscall')'''
+        for function in self.functions:
+            function.visit(writer)
 
 class Function(BaseBox):
-    def __init__(self, name, return_val, block):
+    def __init__(self, name, return_val, args, block=None):
         self.name = name
         self.return_val = return_val
+        self.args = [(args[x],args[x+1]) for x in range(0, len(args), 2)]
+        self.arity = len(args)
         self.block = block
 
     def visit(self, writer):
@@ -111,12 +103,29 @@ class Function(BaseBox):
 
         scope = scope.child()
 
+        for (arg_name, arg_type), register in zip(self.args, ARG_REGISTERS):
+            #print(f'{arg_name.value} -> {register}')
+
+            size = sizeof(arg_type.value)
+
+            offset = scope.stack_index
+
+            writer.writeln(f'push {register}', 'Push argument {} onto stack at position {}'.format(arg_name.value, offset))
+
+            scope.set(arg_name.value, offset)
+
+            scope.stack_index -= size
+
         self.block.visit(writer)
 
         ret_stmt = Return(Constant(Token('INT', 0)))
         ret_stmt.visit(writer)
 
         scope = scope.parent
+
+        writer.writeln('\n')
+
+        writer.ident -= 1
 
 class Statement(BaseBox):
     pass
@@ -341,7 +350,7 @@ class Variable(Expression):
         self.name = name
 
     def visit(self, writer):
-        offset = var_map[self.name.value]
+        offset = scope.get(self.name.value)
 
         writer.writeln(f'mov rax, [rbp+{offset}]')
 
@@ -362,20 +371,20 @@ class Declaration(Expression):
         self.initialiser = initialiser
 
     def visit(self, writer):
-        global stack_index, var_map
+        global scope
 
         if self.initialiser:
             self.initialiser.visit(writer)
 
         size = sizeof(self.type.value)
 
-        offset = stack_index
+        offset = scope.stack_index
 
         writer.writeln('push rax', 'push variable {} of size {} onto stack'.format(self.name.value, size))
 
-        var_map[self.name.value] = offset
+        scope.set(self.name.value, offset)
 
-        stack_index -= size
+        scope.stack_index -= size
 
 class Assignment(Expression):
     def __init__(self, name, expr):
@@ -383,11 +392,9 @@ class Assignment(Expression):
         self.expr = expr
 
     def visit(self, writer):
-        global var_map
-
         self.expr.visit(writer)
 
-        offset = var_map.get(self.name.value)
+        offset = scope.get(self.name.value)
 
         writer.writeln(f'mov [rbp+{offset}], rax', 'Assign {} to rax'.format(self.name.value))
 
@@ -468,3 +475,21 @@ class Loop(Statement):
         writer.writeln('jmp {}'.format(start), 'Jump to start again as expr was true last run')
 
         writer.writeln('{}:'.format(end), ident_inc=-1)
+
+class FunctionCall(Statement):
+    def __init__(self, name, args):
+        self.name = name
+
+        if type(args) == list:
+            self.args = args
+        else:
+            self.args = [args]
+
+        print(self.args)
+
+    def visit(self, writer):
+        for arg, register in zip(self.args, ARG_REGISTERS):
+            arg.visit(writer)
+            writer.writeln('mov {}, rax'.format(register), 'Move arg into the correct sysV register.')
+
+        writer.writeln('call {}'.format(self.name.value))

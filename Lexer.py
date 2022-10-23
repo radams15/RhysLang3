@@ -30,6 +30,7 @@ lg.add('QUESTION', r'\?')
 
 lg.add('SEMICOLON', r';')
 lg.add('COLON', r':')
+lg.add('COMMA', r',')
 
 lg.add('FN', r'fn')
 lg.add('RETURN', r'return')

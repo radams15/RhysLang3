@@ -1,13 +1,17 @@
-fn main() -> int {
-    var out: int = 0;
+fn sub(a: int, b: int) -> int {
+    return a-b;
+}
 
-    for(var i: int=1 ; i<=10 ; i = i+1){
-        if(i == 1){
-            out = out + 100;
-        }else{
-            out = out + i;
-        }
+fn fib(a: int) -> int {
+    if(a <= 2){
+        return 1;
     }
+
+    return fib(sub(a, 2)) + fib(sub(a, 1));
+}
+
+fn main() -> int {
+    var out: int = fib(11);
 
     return out;
 }

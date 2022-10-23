@@ -16,20 +16,62 @@ pg = ParserGenerator(
     ]
 )
 
-@pg.production('program : function')
-def program(p):
-    return Program(p[0])
-
-@pg.production('function : FN IDENTIFIER PAREN_OPEN PAREN_CLOSE SINGLE_ARROW type block')
-def function_decl(p):
-    return Function(p[1], p[5], p[6])
-
 def flatten_list(inp, out):
     for item in inp:
         if isinstance(item, list):
             flatten_list(item, out)
         else:
             out.append(item)
+
+
+@pg.production('program : function_list')
+def program(p):
+    return Program(p[0])
+
+@pg.production('function : FN IDENTIFIER PAREN_OPEN param_list PAREN_CLOSE SINGLE_ARROW type block')
+@pg.production('function : FN IDENTIFIER PAREN_OPEN PAREN_CLOSE SINGLE_ARROW type block')
+def function_decl(p):
+    if len(p) == 8:
+        return Function(p[1], p[6], p[3], p[7])
+    else:
+        return Function(p[1], p[5], [], p[6])
+
+@pg.production('function_list : function | function_list function')
+def function_list(p):
+    if len(p) == 1:
+        return p[0]
+
+    params = []
+
+    flatten_list(p, params)
+
+    return params
+
+@pg.production('param_list : IDENTIFIER COLON type | param_list COMMA IDENTIFIER COLON type')
+def param_list(p):
+    if len(p) == 1:
+        return p[0]
+
+    params = []
+
+    flatten_list(p, params)
+
+    params = [x for x in params if x.name not in ('COLON', 'COMMA')]
+
+    return params
+
+@pg.production('args_list : expr | args_list COMMA expr')
+def args_list(p):
+    if len(p) == 1:
+        return p[0]
+
+    params = []
+
+    flatten_list(p, params)
+
+    params = [x for x in params if not isinstance(x, Token)]
+
+    return params
 
 @pg.production('statements : statement | statements statement')
 def statements(p):
@@ -169,13 +211,16 @@ def term(p):
         left, op, right = p[:3]
         return Binary.choose(op, left, right)
 
-@pg.production('factor : PAREN_OPEN expr PAREN_CLOSE | unary_op factor | INT | IDENTIFIER')
+@pg.production('factor : PAREN_OPEN expr PAREN_CLOSE | unary_op factor | function_call | INT | IDENTIFIER')
 def factor(p):
-    if len(p) == 1: # Just int
-        if p[0].name in ('INT', 'FLOAT'):
-            return Constant(p[0])
+    if len(p) == 1: # Const, var or function call
+        if isinstance(p[0], FunctionCall):
+            return p[0]
         else:
-            return Variable(p[0])
+            if p[0].name in ('INT', 'FLOAT'):
+                return Constant(p[0])
+            else:
+                return Variable(p[0])
 
     elif len(p) == 2: # Unary
         op, expr = p[:2]
@@ -183,6 +228,10 @@ def factor(p):
 
     elif len(p) == 3: # Binary
         return p[1]
+
+@pg.production('function_call : IDENTIFIER PAREN_OPEN args_list PAREN_CLOSE')
+def function_call(p):
+    return FunctionCall(p[0], p[2])
 
 @pg.production('unary_op : EXCLAMATION | TILDE | MINUS')
 def unary_op(p):
