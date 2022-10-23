@@ -28,15 +28,25 @@ def flatten_list(inp, out):
 def program(p):
     return Program(p[0])
 
-@pg.production('function : FN IDENTIFIER PAREN_OPEN param_list PAREN_CLOSE SINGLE_ARROW type block')
-@pg.production('function : FN IDENTIFIER PAREN_OPEN PAREN_CLOSE SINGLE_ARROW type block')
-def function_decl(p):
+@pg.production('function_def : FN IDENTIFIER PAREN_OPEN PAREN_CLOSE SINGLE_ARROW type block | ')
+@pg.production('function_def : FN IDENTIFIER PAREN_OPEN param_list PAREN_CLOSE SINGLE_ARROW type block')
+def function_def(p):
     if len(p) == 8:
         return Function(p[1], p[6], p[3], p[7])
     else:
         return Function(p[1], p[5], [], p[6])
 
-@pg.production('function_list : function | function_list function')
+
+@pg.production('function_decl : FN IDENTIFIER PAREN_OPEN PAREN_CLOSE SINGLE_ARROW type SEMICOLON')
+@pg.production('function_decl : FN IDENTIFIER PAREN_OPEN param_list PAREN_CLOSE SINGLE_ARROW type SEMICOLON')
+def function_decl(p):
+    if len(p) == 8:
+        return Function(p[1], p[6], p[3], [])
+    else:
+        return Function(p[1], p[5], [], [])
+
+@pg.production('function_list : function_decl | function_list function_decl')
+@pg.production('function_list : function_def | function_list function_def')
 def function_list(p):
     if len(p) == 1:
         return p[0]
@@ -229,9 +239,13 @@ def factor(p):
     elif len(p) == 3: # Binary
         return p[1]
 
+@pg.production('function_call : IDENTIFIER PAREN_OPEN PAREN_CLOSE')
 @pg.production('function_call : IDENTIFIER PAREN_OPEN args_list PAREN_CLOSE')
 def function_call(p):
-    return FunctionCall(p[0], p[2])
+    if len(p) == 3:
+        return FunctionCall(p[0], [])
+    elif len(p) == 4:
+        return FunctionCall(p[0], p[2])
 
 @pg.production('unary_op : EXCLAMATION | TILDE | MINUS')
 def unary_op(p):

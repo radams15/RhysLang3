@@ -7,6 +7,8 @@ from Writer import Writer
 if __name__ == '__main__':
     file = 'test.rl'
 
+    linked_libs = 'c'
+
     with open(file, 'r') as f:
         data = f.read()
 
@@ -27,4 +29,6 @@ if __name__ == '__main__':
     with open(out_file, 'r') as f:
         print(f.read())
 
-    os.system(f'nasm -felf64 {out_file} -o out.o && ld out.o -o out')
+    cmd = 'nasm -felf64 {} -o out.o && gcc {} out.o lib.c -o out'.format(out_file, ' '.join(["-l"+x for x in linked_libs]))
+    print(cmd)
+    os.system(cmd)

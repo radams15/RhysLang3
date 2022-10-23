@@ -59,6 +59,8 @@ class Scope:
 
 scope = Scope()
 
+undefined_functions = []
+
 int_size = 8
 
 ARG_REGISTERS = ['rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9']
@@ -83,6 +85,9 @@ class Program(BaseBox):
         for function in self.functions:
             function.visit(writer)
 
+        for undefined_function in undefined_functions:
+            writer.writeln('extern {}'.format(undefined_function))
+
 class Function(BaseBox):
     def __init__(self, name, return_val, args, block=None):
         self.name = name
@@ -93,6 +98,10 @@ class Function(BaseBox):
 
     def visit(self, writer):
         global scope
+
+        if not self.block:
+            undefined_functions.append(self.name.value)
+            return
 
         writer.writeln(f'global {self.name.value}')
         writer.writeln(f'{self.name.value}:')
