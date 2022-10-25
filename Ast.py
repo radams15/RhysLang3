@@ -122,9 +122,6 @@ class Program(BaseBox):
             self.functions = [functions]
 
     def visit(self, writer):
-        #with open('x86_boilerplate.nasm', 'r') as f:
-        #    writer.writeln(f.read() + '\n')
-
         writer.writeln('section .text')
 
         for function in self.functions:

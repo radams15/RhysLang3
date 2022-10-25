@@ -44,13 +44,22 @@ def compile_libs():
     return libs
 
 if __name__ == '__main__':
-    file = 'test.rl'
+    arg_parser = argparse.ArgumentParser()
 
-    linked_libs = ' '.join(["-l"+x for x in LINK_LIBS])
+    arg_parser.add_argument('file', type=str, help='File to compile')
+    arg_parser.add_argument('-f', '--freestanding', action='store_true', help='File to compile')
 
-    libs = compile_libs()
+    args = arg_parser.parse_args()
 
-    with open(file, 'r') as f:
+    if not args.freestanding:
+        linked_libs = ' '.join(["-l"+x for x in LINK_LIBS])
+    else:
+        linked_libs = ''
+
+    if not args.freestanding:
+        libs = compile_libs()
+
+    with open(args.file, 'r') as f:
         data = f.read()
 
     tokens = lexer.lex(data)
@@ -64,16 +73,22 @@ if __name__ == '__main__':
 
         program.visit(writer)
 
-        for lib, asm in libs.items():
-            f.write('\n\n')
-            f.write(asm)
+        if not args.freestanding:
+            for lib, asm in libs.items():
+                f.write('\n\n')
+                f.write(asm)
 
     print('\n')
 
     with open(out_file, 'r') as f:
         print(f.read())
 
-    cmd = 'nasm -felf64 {} -o out.o && gcc {} out.o {} -o out'.format(out_file, linked_libs, ' '.join(EXT_FILES))
+    if not args.freestanding:
+        ext_files = ' '.join(EXT_FILES)
+    else:
+        ext_files = ''
+
+    cmd = 'nasm -felf64 {} -o out.o && gcc {} out.o {} -o out'.format(out_file, linked_libs, ext_files)
 
     print(cmd)
     os.system(cmd)
