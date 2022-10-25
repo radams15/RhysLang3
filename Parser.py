@@ -1,9 +1,11 @@
-import itertools
+import warnings
 
 from rply import ParserGenerator
 from Lexer import lg
 
 from Ast import *
+
+warnings.filterwarnings("ignore") # Disable warnings
 
 tokens = [x.name for x in lg.rules]
 
