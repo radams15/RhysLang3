@@ -49,6 +49,7 @@ lg.add('BRACE_CLOSE', r'\}')
 lg.add('BRACKET_OPEN', r'\[')
 lg.add('BRACKET_CLOSE', r'\]')
 
+lg.add('STRING', r'".*?"')
 lg.add('IDENTIFIER', r'[a-zA-Z][a-zA-Z0-9_]*')
 
 lg.ignore(r'\s+')

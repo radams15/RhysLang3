@@ -221,7 +221,7 @@ def term(p):
         left, op, right = p[:3]
         return Binary.choose(op, left, right)
 
-@pg.production('factor : PAREN_OPEN expr PAREN_CLOSE | unary_op factor | function_call | INT | IDENTIFIER')
+@pg.production('factor : PAREN_OPEN expr PAREN_CLOSE | unary_op factor | function_call | INT | STRING | IDENTIFIER')
 def factor(p):
     if len(p) == 1: # Const, var or function call
         if isinstance(p[0], FunctionCall):
@@ -229,6 +229,8 @@ def factor(p):
         else:
             if p[0].name in ('INT', 'FLOAT'):
                 return Constant(p[0])
+            if p[0].name == 'STRING':
+                return String(p[0])
             else:
                 return Variable(p[0])
 

@@ -1,5 +1,6 @@
-from rply.token import BaseBox, Token
+import re
 
+from rply.token import BaseBox, Token
 
 class LabelGenerator:
     def __init__(self, start=0):
@@ -57,7 +58,46 @@ class Scope:
 
         raise Exception("Unknown variable: {}".format(name))
 
+class GlobalGenerator:
+    def __init__(self):
+        self.globals = dict()
+        self.counter = 0
+
+    def _get_name(self, type):
+        self.counter += 1
+        return '{}_{}'.format(type, self.counter)
+
+    def make(self, size, *data, type='global'):
+        name = self._get_name(type)
+
+        if size not in ('db', 'dw', 'dd', 'dq'):
+            print('Error: unknown global size: {}'.format(size))
+            size = 'dq'
+
+
+        normalised_data = []
+        for x in data:
+            if isinstance(x, Token):
+                x = x.value
+
+            normalised_data.append(x)
+
+        self.globals[name] = (size, normalised_data)
+
+        return name
+
+    def generate(self):
+        out = ''
+
+        for name, (size, data) in self.globals.items():
+            out += '\t{}: {} {}\n'.format(name, size, ', '.join([str(x) for x in data]))
+
+        return out
+
+
 scope = Scope()
+
+globals_gen = GlobalGenerator()
 
 undefined_functions = []
 
@@ -69,6 +109,9 @@ label_generator = LabelGenerator()
 
 def sizeof(type):
     if type == 'int':
+        return 8
+
+    if type == 'str':
         return 8
 
     else:
@@ -87,6 +130,10 @@ class Program(BaseBox):
 
         for undefined_function in undefined_functions:
             writer.writeln('extern {}'.format(undefined_function))
+
+        writer.writeln('section .data')
+
+        writer.write(globals_gen.generate())
 
 class Function(BaseBox):
     def __init__(self, name, return_val, args, block=None):
@@ -365,13 +412,36 @@ class Variable(Expression):
 
 class Constant(Expression):
     def __init__(self, value):
-        self.value = value
+        if type(value) == Token:
+            self.value = value.value
+        else:
+            self.value = value
 
     def visit(self, writer):
-        writer.writeln(f'mov rax, {self.value.value}')
+        writer.writeln(f'mov rax, {self.value}')
 
     def size(self):
         return 8
+
+
+class String(Constant):
+    def __init__(self, data):
+        data = data.value[1:-1]
+
+        sects = re.split(r'\\(\w)', data)
+
+        data = []
+        for x in sects:
+            if not x: continue
+            elif x == 'n': data.append(ord('\n'))
+            elif x == 't': data.append(ord('\t'))
+            else: data.append(f'"{x}"')
+
+        id = globals_gen.make('dw', *data, 0, type='string')
+        super().__init__(id)
+
+    def visit(self, writer):
+        writer.writeln(f'mov rax, {self.value}')
 
 class Declaration(Expression):
     def __init__(self, name, type, initialiser=None):
@@ -493,8 +563,6 @@ class FunctionCall(Statement):
             self.args = args
         else:
             self.args = [args]
-
-        print(self.args)
 
     def visit(self, writer):
         for arg, register in zip(self.args, ARG_REGISTERS):
