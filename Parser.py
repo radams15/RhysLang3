@@ -101,13 +101,14 @@ def block(p):
 @pg.production('statement : RETURN expr SEMICOLON |' +
                'expr SEMICOLON |' +
                'IF PAREN_OPEN expr PAREN_CLOSE block |' +
-               'IF PAREN_OPEN expr PAREN_CLOSE block ELSE block |' +
+               'IF PAREN_OPEN expr PAREN_CLOSE block ELSE statement |' +
                'FOR PAREN_OPEN expr SEMICOLON expr SEMICOLON expr PAREN_CLOSE block |' +
                'WHILE PAREN_OPEN expr PAREN_CLOSE block' +
                '')
 def statement(p):
-    if p[0].name == 'RETURN':
-        return Return(p[1])
+    if len(p) == 3:
+        if p[0].name == 'RETURN':
+            return Return(p[1])
 
     if len(p) == 5:
         if p[0].name == 'IF':
@@ -221,15 +222,17 @@ def term(p):
         left, op, right = p[:3]
         return Binary.choose(op, left, right)
 
-@pg.production('factor : PAREN_OPEN expr PAREN_CLOSE | unary_op factor | function_call | INT | STRING | IDENTIFIER')
+@pg.production('factor : PAREN_OPEN expr PAREN_CLOSE | unary_op factor | syscall | function_call | INT | CHAR | STRING | IDENTIFIER')
 def factor(p):
-    if len(p) == 1: # Const, var or function call
-        if isinstance(p[0], FunctionCall):
+    if len(p) == 1: # Const, var name or function call
+        if isinstance(p[0], FunctionCall) or isinstance(p[0], Syscall):
             return p[0]
         else:
             if p[0].name in ('INT', 'FLOAT'):
                 return Constant(p[0])
-            if p[0].name == 'STRING':
+            elif p[0].name == 'CHAR':
+                return Char(p[0])
+            elif p[0].name == 'STRING':
                 return String(p[0])
             else:
                 return Variable(p[0])
@@ -249,6 +252,14 @@ def function_call(p):
     elif len(p) == 4:
         return FunctionCall(p[0], p[2])
 
+@pg.production('syscall : SYSCALL INT PAREN_OPEN PAREN_CLOSE')
+@pg.production('syscall : SYSCALL INT PAREN_OPEN args_list PAREN_CLOSE')
+def syscall(p):
+    if len(p) == 4:
+        return Syscall(p[1], [])
+    elif len(p) == 5:
+        return Syscall(p[1], p[3])
+
 @pg.production('unary_op : EXCLAMATION | TILDE | MINUS')
 def unary_op(p):
     return p[0]
@@ -256,7 +267,7 @@ def unary_op(p):
 @pg.production('binary_op_1 : PLUS | MINUS')
 def binary_op_1(p):
     return p[0]
-@pg.production('binary_op_2 : MULTIPLY | DIVIDE | EXPONENT')
+@pg.production('binary_op_2 : MULTIPLY | DIVIDE | EXPONENT | XOR | PIPE | AMPERSAND')
 def binary_op_2(p):
     return p[0]
 

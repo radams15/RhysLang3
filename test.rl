@@ -2,11 +2,6 @@ fn sub(a: int, b: int) -> int {
     return a-b;
 }
 
-fn clock() -> int;
-fn printi(a: int) -> int;
-fn puts(a: str) -> void;
-fn printf(a: str, b: str) -> void;
-
 fn exponent(a: int, exp: int) -> int {
     var out: int = a;
 
@@ -26,10 +21,13 @@ fn fib(a: int) -> int {
 }
 
 fn main() -> int {
-    var out: int = exponent(5, 2);
+    var file_name: str = "out.txt";
 
-    var name: str = "rhys";
-    printf("hello world %s %d\n\n", name, 5);
+    var fd: int = fopen(file_name, 'w');
 
-    return out;
+    fwrite(fd, "a\n\n");
+
+    fclose(fd);
+
+    return 1;
 }

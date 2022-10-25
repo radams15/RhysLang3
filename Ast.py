@@ -108,10 +108,7 @@ ARG_REGISTERS = ['rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9']
 label_generator = LabelGenerator()
 
 def sizeof(type):
-    if type == 'int':
-        return 8
-
-    if type == 'str':
+    if type in ('int', 'char', 'str'):
         return 8
 
     else:
@@ -119,11 +116,16 @@ def sizeof(type):
 
 class Program(BaseBox):
     def __init__(self, functions):
-        self.functions = functions
+        if type(functions) == list:
+            self.functions = functions
+        else:
+            self.functions = [functions]
 
     def visit(self, writer):
-        with open('x86_boilerplate.nasm', 'r') as f:
-            writer.writeln(f.read() + '\n')
+        #with open('x86_boilerplate.nasm', 'r') as f:
+        #    writer.writeln(f.read() + '\n')
+
+        writer.writeln('section .text')
 
         for function in self.functions:
             function.visit(writer)
@@ -285,9 +287,53 @@ class Binary(Expression):
         elif operator.name == 'NOT_EQUAL':
             return LogicalNegation(None, Equal(operator, left, right))
 
+        elif operator.name == 'PIPE':
+            return BitwiseOr(operator, left, right)
+
+        elif operator.name == 'XOR':
+            return BitwiseAnd(operator, left, right)
+
+        elif operator.name == 'XOR':
+            return BitwiseXor(operator, left, right)
+
         else:
             raise Exception(f'Invalid binary operator: {operator}')
 
+class BitwiseAnd(Binary):
+    def visit(self, writer):
+        self.left.visit(writer)
+        writer.writeln('push rax')
+        self.right.visit(writer)
+        writer.writeln('pop rcx')
+
+        writer.writeln('and rax, rcx')
+
+class BitwiseXor(Binary):
+    def visit(self, writer):
+        self.left.visit(writer)
+        writer.writeln('push rax')
+        self.right.visit(writer)
+        writer.writeln('pop rcx')
+
+        writer.writeln('xor rax, rcx')
+
+class BitwiseOr(Binary):
+    def visit(self, writer):
+        self.left.visit(writer)
+        writer.writeln('push rax')
+        self.right.visit(writer)
+        writer.writeln('pop rcx')
+
+        writer.writeln('or rax, rcx')
+
+class BitwiseXor(Binary):
+    def visit(self, writer):
+        self.left.visit(writer)
+        writer.writeln('push rax')
+        self.right.visit(writer)
+        writer.writeln('pop rcx')
+
+        writer.writeln('xor rax, rcx')
 
 class Or(Binary):
     def visit(self, writer):
@@ -423,6 +469,12 @@ class Constant(Expression):
     def size(self):
         return 8
 
+class Char(Constant):
+    def __init__(self, data):
+        data = ord(data.value[1:-1])
+
+        super().__init__(data)
+
 
 class String(Constant):
     def __init__(self, data):
@@ -554,6 +606,25 @@ class Loop(Statement):
         writer.writeln('jmp {}'.format(start), 'Jump to start again as expr was true last run')
 
         writer.writeln('{}:'.format(end), ident_inc=-1)
+
+class Syscall(Statement):
+    def __init__(self, id, args):
+        self.id = id.value
+
+        if type(args) == list:
+            self.args = args
+        else:
+            self.args = [args]
+
+    def visit(self, writer):
+        for arg, register in zip(self.args, ARG_REGISTERS):
+            arg.visit(writer)
+            writer.writeln('mov {}, rax'.format(register), 'Move arg into the correct sysV register.')
+
+        writer.writeln('mov rax, {}'.format(self.id), 'Move syscall number {} into rax.'.format(self.id))
+
+        writer.writeln('syscall')
+
 
 class FunctionCall(Statement):
     def __init__(self, name, args):

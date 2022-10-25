@@ -1,0 +1,1 @@
+fn printi(a: int) -> void;
