@@ -114,6 +114,9 @@ def sizeof(type):
     else:
         raise Exception('Unknown type: {}'.format(type))
 
+def write_debug(writer, token):
+    writer.writeln(f'%line {token.source_pos.lineno}+{token.source_pos.colno} test.rl')
+
 class Program(BaseBox):
     def __init__(self, functions):
         if type(functions) == list:
@@ -150,6 +153,7 @@ class Function(BaseBox):
             return
 
         writer.writeln(f'global {self.name.value}')
+        write_debug(writer, self.name)
         writer.writeln(f'{self.name.value}:')
         writer.ident += 1
 
@@ -323,15 +327,6 @@ class BitwiseOr(Binary):
 
         writer.writeln('or rax, rcx')
 
-class BitwiseXor(Binary):
-    def visit(self, writer):
-        self.left.visit(writer)
-        writer.writeln('push rax')
-        self.right.visit(writer)
-        writer.writeln('pop rcx')
-
-        writer.writeln('xor rax, rcx')
-
 class Or(Binary):
     def visit(self, writer):
         jmp_lbl, end_lbl = label_generator.generate_both('or')
@@ -503,6 +498,8 @@ class Declaration(Expression):
 
         if self.initialiser:
             self.initialiser.visit(writer)
+
+        write_debug(writer, self.name)
 
         size = sizeof(self.type.value)
 

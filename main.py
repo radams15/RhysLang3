@@ -47,7 +47,8 @@ if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser()
 
     arg_parser.add_argument('file', type=str, help='File to compile')
-    arg_parser.add_argument('-f', '--freestanding', action='store_true', help='File to compile')
+    arg_parser.add_argument('-f', '--freestanding', action='store_true', help='Compile without standard library or extensions')
+    arg_parser.add_argument('-g', '--debug', action='store_true', help='Compile with DWARF support')
 
     args = arg_parser.parse_args()
 
@@ -88,7 +89,12 @@ if __name__ == '__main__':
     else:
         ext_files = ''
 
-    cmd = 'nasm -felf64 {} -o out.o && gcc {} out.o {} -o out'.format(out_file, linked_libs, ext_files)
+    if args.debug:
+        debug_args = '-g -F dwarf'
+    else:
+        debug_args = ''
+
+    cmd = 'nasm -felf64 {} {} -o out.o && gcc {} out.o {} -o out'.format(debug_args, out_file, linked_libs, ext_files)
 
     print(cmd)
     os.system(cmd)
