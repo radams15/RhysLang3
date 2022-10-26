@@ -5,7 +5,7 @@ from glob import glob
 import argparse
 
 from Lexer import lexer
-from Parser import parser
+from Parser import parser, init_parser
 from Writer import Writer
 
 LIB_DIR = 'lib'
@@ -15,7 +15,9 @@ FILE_EXT = '.rl'
 LIBS = [x.replace(LIB_DIR+os.sep, '').replace(FILE_EXT, '') for x in glob(f'{LIB_DIR}/*{FILE_EXT}')]
 EXT_FILES = list(glob(f'{EXT_DIR}/*.c'))
 
-LINK_LIBS = ['c']
+LINK_LIBS = [
+#   'c'
+]
 
 def compile_lib(name):
     path = os.path.join(LIB_DIR, name) + FILE_EXT
@@ -36,6 +38,8 @@ def compile_lib(name):
 
 
 def compile_libs():
+    init_parser(def_start=False)
+
     libs = {
         x : compile_lib(x)
         for x in LIBS
@@ -61,25 +65,36 @@ if __name__ == '__main__':
 
     if not args.freestanding:
         libs = compile_libs()
+    else:
+        libs = {}
+
+
+
+    ### Create build directories
+
+    build_dir = 'build/'
+    lib_build_dir = os.path.join(build_dir, 'lib')
+    ext_build_dir = os.path.join(build_dir, 'ext')
+
+    if not os.path.exists(lib_build_dir): os.makedirs(lib_build_dir)
+    if not os.path.exists(ext_build_dir): os.makedirs(ext_build_dir)
+
+    ### Compile source file.
 
     with open(args.file, 'r') as f:
         data = f.read()
 
     tokens = lexer.lex(data)
 
+    init_parser()
     program = parser.parse(tokens)
 
-    out_file = 'out.nasm'
+    out_file = f'{build_dir}/out.nasm'
 
     with open(out_file, 'w') as f:
         writer = Writer(f)
 
         program.visit(writer)
-
-        if not args.freestanding:
-            for lib, asm in libs.items():
-                f.write('\n\n')
-                f.write(asm)
 
     if args.dump:
         print('\n')
@@ -87,17 +102,58 @@ if __name__ == '__main__':
         with open(out_file, 'r') as f:
             print(f.read())
 
-    if not args.freestanding:
-        ext_files = ' '.join(EXT_FILES)
-    else:
-        ext_files = ''
-
     if args.debug:
         debug_args = '-g -F dwarf'
     else:
         debug_args = ''
 
-    cmd = 'nasm -felf64 {} {} -o out.o && gcc {} out.o {} -o {}'.format(debug_args, out_file, linked_libs, ext_files, args.output)
 
+    if not args.freestanding:
+        ### Assemble stdlib
+
+        all_asm = '\n\n'.join([asm for name, asm in libs.items()])
+
+        asm_file = os.path.join(lib_build_dir, 'librl.nasm')
+        with open(asm_file, 'w') as f:
+            f.write(all_asm)
+
+        librl_object = f'{lib_build_dir}/librl.o'
+
+        cmd = f'nasm -felf64 {debug_args} {asm_file} -o {librl_object}'
+        print(cmd)
+        os.system(cmd)
+
+        ### Compile extensions
+
+        ext_objects = []
+        for ext_file in EXT_FILES:
+            obj_file = os.path.basename(ext_file).replace('.c', '.o')
+            obj_path = os.path.join(ext_build_dir, obj_file)
+
+            cmd = f'gcc -ffreestanding -nostdlib -c {ext_file} -o {obj_path}'
+            print(cmd)
+            os.system(cmd)
+
+            ext_objects.append(obj_path)
+    else:
+        ext_objects = []
+        librl_object = ''
+
+    ### Assemble source file
+
+    source_object = os.path.join(build_dir, 'out.o')
+
+    cmd = 'nasm -felf64 {} {} -o {}'.format(debug_args, out_file, source_object)
     print(cmd)
     os.system(cmd)
+
+    ### Link source files
+
+    cmd = 'ld {} {} {} -o {}'.format(' '.join(ext_objects), librl_object, source_object, args.output)
+    print(cmd)
+    os.system(cmd)
+
+    #cmd = 'nasm -felf64 {} {} -o out.o && gcc {} out.o {} -o out'.format(debug_args, out_file, linked_libs, ext_files)
+
+    #print(cmd)
+    #os.system(cmd)

@@ -2,6 +2,16 @@ import re
 
 from rply.token import BaseBox, Token
 
+ENTRYPOINT = '''\
+global _start
+
+_start:
+    call main
+    mov rdi, rbp
+    mov rax, 60
+    syscall
+'''
+
 class LabelGenerator:
     def __init__(self, start=0):
         self.counter = start
@@ -14,6 +24,14 @@ class LabelGenerator:
         start = self.generate(type)
         return (start, start+'_end')
 
+class StackLocation:
+    def __init__(self, index):
+        self.index = index
+
+class GlobalLocation:
+    def __init__(self, name):
+        self.name = name
+
 class Scope:
     def __init__(self, parent=None, index=0):
         self.values = dict()
@@ -21,7 +39,7 @@ class Scope:
 
         self.stack_index = -8
 
-        self.index = 0
+        self.index = index
 
     def child(self):
         return Scope(self)
@@ -67,8 +85,9 @@ class GlobalGenerator:
         self.counter += 1
         return '{}_{}'.format(type, self.counter)
 
-    def make(self, size, *data, type='global'):
-        name = self._get_name(type)
+    def make(self, size, *data, type='global', name=None):
+        if not name:
+            name = self._get_name(type)
 
         if size not in ('db', 'dw', 'dd', 'dq'):
             print('Error: unknown global size: {}'.format(size))
@@ -95,17 +114,15 @@ class GlobalGenerator:
         return out
 
 
-scope = Scope()
-
-globals_gen = GlobalGenerator()
-
-undefined_functions = []
+scope = None
+globals_gen = None
+label_generator = None
+undefined_functions = None
+defined_functions = None
 
 int_size = 8
 
 ARG_REGISTERS = ['rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9']
-
-label_generator = LabelGenerator()
 
 def sizeof(type):
     if type in ('int', 'char', 'str'):
@@ -114,17 +131,46 @@ def sizeof(type):
     else:
         raise Exception('Unknown type: {}'.format(type))
 
+def datasize(type):
+    return {
+        8: 'db',
+        16: 'dw',
+        32: 'dd',
+        64: 'dq',
+    }[sizeof(type)]
+
 def write_debug(writer, token):
-    writer.writeln(f'%line {token.source_pos.lineno}+{token.source_pos.colno} test.rl')
+    writer.writeln(f'%line {token.source_pos.lineno}+0 test.rl')
+
+def init_parser(def_start=True):
+    global undefined_functions, defined_functions, globals_gen, label_generator, scope, define_start
+
+    undefined_functions = []
+    defined_functions = []
+    globals_gen = GlobalGenerator()
+    label_generator = LabelGenerator()
+    scope = Scope()
+    define_start = def_start
+
 
 class Program(BaseBox):
-    def __init__(self, functions):
+    def __init__(self, functions, globals):
         if type(functions) == list:
             self.functions = functions
         else:
             self.functions = [functions]
 
+        if type(globals) == list:
+            self.globals = globals
+        else:
+            self.globals = [globals]
+
     def visit(self, writer):
+        global undefined_functions, globals_gen, define_start
+
+        for global_var in self.globals:
+            global_var.visit(writer)
+
         writer.writeln('section .text')
 
         for function in self.functions:
@@ -132,6 +178,9 @@ class Program(BaseBox):
 
         for undefined_function in undefined_functions:
             writer.writeln('extern {}'.format(undefined_function))
+
+        if define_start:
+            writer.writeln(ENTRYPOINT)
 
         writer.writeln('section .data')
 
@@ -152,6 +201,8 @@ class Function(BaseBox):
             undefined_functions.append(self.name.value)
             return
 
+        defined_functions.append(self.name.value)
+
         writer.writeln(f'global {self.name.value}')
         write_debug(writer, self.name)
         writer.writeln(f'{self.name.value}:')
@@ -163,15 +214,13 @@ class Function(BaseBox):
         scope = scope.child()
 
         for (arg_name, arg_type), register in zip(self.args, ARG_REGISTERS):
-            #print(f'{arg_name.value} -> {register}')
-
             size = sizeof(arg_type.value)
 
             offset = scope.stack_index
 
             writer.writeln(f'push {register}', 'Push argument {} onto stack at position {}'.format(arg_name.value, offset))
 
-            scope.set(arg_name.value, offset)
+            scope.set(arg_name.value, StackLocation(offset))
 
             scope.stack_index -= size
 
@@ -444,9 +493,14 @@ class Variable(Expression):
         self.name = name
 
     def visit(self, writer):
-        offset = scope.get(self.name.value)
+        obj = scope.get(self.name.value)
 
-        writer.writeln(f'mov rax, [rbp+{offset}]')
+        if type(obj) == StackLocation:
+            writer.writeln(f'mov rax, [rbp+{obj.index}]')
+        elif type(obj) == GlobalLocation:
+            writer.writeln(f'mov rax, {obj.name}')
+        else:
+            raise Exception(f'Unknown variable type: {type(obj)}')
 
 class Constant(Expression):
     def __init__(self, value):
@@ -460,6 +514,24 @@ class Constant(Expression):
 
     def size(self):
         return 8
+
+class Global(Expression):
+    def __init__(self, name, type, value=None):
+        self.name = name
+        self.type = type
+        self.value = value
+
+    def visit(self, writer):
+        value = self.value.value
+
+        if self.type.value == 'str':
+            value = "'"+value[1:-1]+"'"
+            value = [value, 0]
+        else:
+            value = [value]
+
+        globals_gen.make(datasize(self.type.value), *value, name=self.name.value)
+        scope.set(self.name.value, GlobalLocation(self.name.value))
 
 class Char(Constant):
     def __init__(self, data):
@@ -507,7 +579,7 @@ class Declaration(Expression):
 
         writer.writeln('push rax', 'push variable {} of size {} onto stack'.format(self.name.value, size))
 
-        scope.set(self.name.value, offset)
+        scope.set(self.name.value, StackLocation(offset))
 
         scope.stack_index -= size
 
@@ -519,7 +591,7 @@ class Assignment(Expression):
     def visit(self, writer):
         self.expr.visit(writer)
 
-        offset = scope.get(self.name.value)
+        offset = scope.get(self.name.value).index
 
         writer.writeln(f'mov [rbp+{offset}], rax', 'Assign {} to rax'.format(self.name.value))
 
@@ -630,6 +702,10 @@ class FunctionCall(Statement):
             self.args = [args]
 
     def visit(self, writer):
+        global undefined_functions
+        if self.name.value not in defined_functions:
+            undefined_functions.append(self.name.value)
+
         for arg, register in zip(self.args, ARG_REGISTERS):
             arg.visit(writer)
             writer.writeln('mov {}, rax'.format(register), 'Move arg into the correct sysV register.')

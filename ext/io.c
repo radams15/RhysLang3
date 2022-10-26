@@ -1,7 +1,12 @@
-#include <stdio.h>
+#define NULL ((void*) 0)
 
-int printi(long i){
-    printf("%ld\n", i);
+int strlen(char* inp){
+    int out=0;
 
-    return 0;
+    while(*inp != '\0'){
+        out++;
+        inp++;
+    }
+
+    return out;
 }
