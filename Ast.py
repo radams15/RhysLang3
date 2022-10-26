@@ -1,5 +1,7 @@
 import re
 
+from AstUtils import *
+
 from rply.token import BaseBox, Token
 
 ENTRYPOINT = '''\
@@ -12,87 +14,14 @@ _start:
     syscall
 '''
 
-class LabelGenerator:
-    def __init__(self, start=0):
-        self.counter = start
 
-    def generate(self, type='label'):
-        self.counter += 1
-        return '{}_{}'.format(type, self.counter, '_end')
-
-    def generate_both(self, type='label'):
-        start = self.generate(type)
-        return (start, start+'_end')
-
-class StackLocation:
-    def __init__(self, index):
-        self.index = index
-
-class GlobalLocation:
-    def __init__(self, name):
-        self.name = name
-
-class Scope:
-    def __init__(self, parent=None, index=0):
-        self.values = dict()
-        self.parent = parent
-
-        self.stack_index = -8
-
-        self.index = index
-
-    def child(self):
-        return Scope(self)
-
-    def _set(self, name, value):
-        self.values[name] = value
-
-    def set(self, name, value):
-        owner = self.find_owner(name)
-
-        if not owner:
-            owner = self
-
-        owner._set(name, value)
-
-    def contains(self, name):
-        return name in self.values
-
-    def find_owner(self, name):
-        if self.contains(name):
-            return self
-
-        if self.parent:
-            return self.parent.find_owner(name)
-
-    def _get(self, name):
-        return self.values[name]
-
-    def get(self, name):
-        owner = self.find_owner(name)
-
-        if owner:
-            return owner._get(name)
-
-        raise Exception("Unknown variable: {}".format(name))
-
-class GlobalGenerator:
-    def __init__(self):
-        self.globals = dict()
-        self.counter = 0
-
-    def _get_name(self, type):
-        self.counter += 1
-        return '{}_{}'.format(type, self.counter)
-
+class x86_64GlobalGenerator(GlobalGenerator):
     def make(self, size, *data, type='global', name=None):
         if not name:
             name = self._get_name(type)
 
         if size not in ('db', 'dw', 'dd', 'dq'):
-            print('Error: unknown global size: {}'.format(size))
-            size = 'dq'
-
+            raise Exception('Error: unknown global size: {}'.format(size))
 
         normalised_data = []
         for x in data:
@@ -113,12 +42,11 @@ class GlobalGenerator:
 
         return out
 
-
-scope = None
-globals_gen = None
-label_generator = None
-undefined_functions = None
-defined_functions = None
+scope: Scope = None
+globals_gen: GlobalGenerator = None
+label_generator: LabelGenerator = None
+undefined_functions: list = None
+defined_functions: list = None
 
 int_size = 8
 
@@ -140,14 +68,15 @@ def datasize(type):
     }[sizeof(type)]
 
 def write_debug(writer, token):
-    writer.writeln(f'%line {token.source_pos.lineno}+0 test.rl')
+    pass
+    #writer.writeln(f'%line {token.source_pos.lineno}+0 test.rl')
 
 def init_parser(def_start=True):
     global undefined_functions, defined_functions, globals_gen, label_generator, scope, define_start
 
     undefined_functions = []
     defined_functions = []
-    globals_gen = GlobalGenerator()
+    globals_gen = x86_64GlobalGenerator()
     label_generator = LabelGenerator()
     scope = Scope()
     define_start = def_start
@@ -525,8 +454,8 @@ class Global(Expression):
         value = self.value.value
 
         if self.type.value == 'str':
-            value = "'"+value[1:-1]+"'"
-            value = [value, 0]
+            value = unicode_deescape(value[1:-1])
+            value = value + [0]
         else:
             value = [value]
 
@@ -539,19 +468,11 @@ class Char(Constant):
 
         super().__init__(data)
 
-
 class String(Constant):
     def __init__(self, data):
         data = data.value[1:-1]
 
-        sects = re.split(r'\\(\w)', data)
-
-        data = []
-        for x in sects:
-            if not x: continue
-            elif x == 'n': data.append(ord('\n'))
-            elif x == 't': data.append(ord('\t'))
-            else: data.append(f'"{x}"')
+        data = unicode_deescape(data)
 
         id = globals_gen.make('dw', *data, 0, type='string')
         super().__init__(id)
