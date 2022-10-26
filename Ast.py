@@ -100,6 +100,7 @@ scope = Scope()
 globals_gen = GlobalGenerator()
 
 undefined_functions = []
+defined_functions = []
 
 int_size = 8
 
@@ -131,6 +132,7 @@ class Program(BaseBox):
             function.visit(writer)
 
         for undefined_function in undefined_functions:
+            print(f'{undefined_function} Undefined!')
             writer.writeln('extern {}'.format(undefined_function))
 
         writer.writeln('section .data')
@@ -151,6 +153,8 @@ class Function(BaseBox):
         if not self.block:
             undefined_functions.append(self.name.value)
             return
+
+        defined_functions.append(self.name.value)
 
         writer.writeln(f'global {self.name.value}')
         write_debug(writer, self.name)
@@ -630,6 +634,10 @@ class FunctionCall(Statement):
             self.args = [args]
 
     def visit(self, writer):
+        global undefined_functions
+        if self.name.value not in defined_functions:
+            undefined_functions.append(self.name.value)
+
         for arg, register in zip(self.args, ARG_REGISTERS):
             arg.visit(writer)
             writer.writeln('mov {}, rax'.format(register), 'Move arg into the correct sysV register.')
