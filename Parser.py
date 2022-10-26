@@ -26,9 +26,32 @@ def flatten_list(inp, out):
             out.append(item)
 
 
+@pg.production('program : global_list function_list')
 @pg.production('program : function_list')
 def program(p):
-    return Program(p[0])
+    if len(p) == 1:
+        return Program(p[0], [])
+    else:
+        return Program(p[1], p[0])
+
+@pg.production('global_list : global | global_list global')
+def global_list(p):
+    if len(p) == 1:
+        return p[0]
+
+    params = []
+
+    flatten_list(p, params)
+
+    return params
+
+@pg.production('global : GLOBAL IDENTIFIER COLON type SEMICOLON')
+@pg.production('global : GLOBAL IDENTIFIER COLON type EQUAL primitive SEMICOLON')
+def global_var(p):
+    if len(p) == 5:
+        return Global(p[1], p[3])
+    else:
+        return Global(p[1], p[3], p[5])
 
 @pg.production('function_def : FN IDENTIFIER PAREN_OPEN PAREN_CLOSE SINGLE_ARROW type block | ')
 @pg.production('function_def : FN IDENTIFIER PAREN_OPEN param_list PAREN_CLOSE SINGLE_ARROW type block')
@@ -224,7 +247,7 @@ def term(p):
         left, op, right = p[:3]
         return Binary.choose(op, left, right)
 
-@pg.production('factor : PAREN_OPEN expr PAREN_CLOSE | unary_op factor | syscall | function_call | INT | CHAR | STRING | IDENTIFIER')
+@pg.production('factor : PAREN_OPEN expr PAREN_CLOSE | unary_op factor | syscall | function_call | primitive | IDENTIFIER')
 def factor(p):
     if len(p) == 1: # Const, var name or function call
         if isinstance(p[0], FunctionCall) or isinstance(p[0], Syscall):
@@ -283,6 +306,10 @@ def equality_op(p):
 
 @pg.production('type : IDENTIFIER')
 def type(p):
+    return p[0]
+
+@pg.production('primitive : INT | CHAR | STRING')
+def primitive(p):
     return p[0]
 
 parser = pg.build()

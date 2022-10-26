@@ -1,2 +1,3 @@
-fn printi(a: int) -> void;
-fn printf(fmt: str) -> void;
+fn puts(data: str) -> int {
+    return syscall 1(1, data, strlen(data)+1);
+}

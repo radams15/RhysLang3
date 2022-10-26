@@ -37,6 +37,7 @@ lg.add('COMMA', r',')
 
 lg.add('FN', r'fn')
 lg.add('REQUIRE', r'require')
+lg.add('GLOBAL', r'global')
 lg.add('RETURN', r'return')
 lg.add('VAR', r'var')
 lg.add('IF', r'if')

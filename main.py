@@ -5,7 +5,7 @@ from glob import glob
 import argparse
 
 from Lexer import lexer
-from Parser import parser
+from Parser import parser, init_parser
 from Writer import Writer
 
 LIB_DIR = 'lib'
@@ -38,6 +38,8 @@ def compile_lib(name):
 
 
 def compile_libs():
+    init_parser(def_start=False)
+
     libs = {
         x : compile_lib(x)
         for x in LIBS
@@ -77,7 +79,6 @@ if __name__ == '__main__':
     if not os.path.exists(lib_build_dir): os.makedirs(lib_build_dir)
     if not os.path.exists(ext_build_dir): os.makedirs(ext_build_dir)
 
-
     ### Compile source file.
 
     with open(args.file, 'r') as f:
@@ -85,6 +86,7 @@ if __name__ == '__main__':
 
     tokens = lexer.lex(data)
 
+    init_parser()
     program = parser.parse(tokens)
 
     out_file = f'{build_dir}/out.nasm'
@@ -105,32 +107,37 @@ if __name__ == '__main__':
     else:
         debug_args = ''
 
-    ### Assemble stdlib
 
-    all_asm = '\n\n'.join([asm for name, asm in libs.items()])
+    if not args.freestanding:
+        ### Assemble stdlib
 
-    asm_file = os.path.join(lib_build_dir, 'librl.nasm')
-    with open(asm_file, 'w') as f:
-        f.write(all_asm)
+        all_asm = '\n\n'.join([asm for name, asm in libs.items()])
 
-    librl_object = f'{lib_build_dir}/librl.o'
+        asm_file = os.path.join(lib_build_dir, 'librl.nasm')
+        with open(asm_file, 'w') as f:
+            f.write(all_asm)
 
-    cmd = f'nasm -felf64 {debug_args} {asm_file} -o {librl_object}'
-    print(cmd)
-    os.system(cmd)
+        librl_object = f'{lib_build_dir}/librl.o'
 
-    ### Compile extensions
-
-    ext_objects = []
-    for ext_file in EXT_FILES:
-        obj_file = os.path.basename(ext_file).replace('.c', '.o')
-        obj_path = os.path.join(ext_build_dir, obj_file)
-
-        cmd = f'gcc -c {ext_file} -o {obj_path}'
+        cmd = f'nasm -felf64 {debug_args} {asm_file} -o {librl_object}'
         print(cmd)
         os.system(cmd)
 
-        ext_objects.append(obj_path)
+        ### Compile extensions
+
+        ext_objects = []
+        for ext_file in EXT_FILES:
+            obj_file = os.path.basename(ext_file).replace('.c', '.o')
+            obj_path = os.path.join(ext_build_dir, obj_file)
+
+            cmd = f'gcc -ffreestanding -nostdlib -c {ext_file} -o {obj_path}'
+            print(cmd)
+            os.system(cmd)
+
+            ext_objects.append(obj_path)
+    else:
+        ext_objects = []
+        librl_object = ''
 
     ### Assemble source file
 

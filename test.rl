@@ -1,13 +1,14 @@
-fn main() -> int {
-    var file_name: str = "out.txt";
+global file_name: str = "out.txt";
+global to_write: str = "hello world: this is text!";
 
+fn main() -> int {
     var fd: int = fopen(file_name, 'w');
 
-    fwrite(fd, "hello world\nthis is a text file!");
+    fwrite(fd, to_write);
 
     fclose(fd);
 
-    printf("%d\n", strlen("hello"));
+    puts("Done!\n");
 
     return 1;
 }
