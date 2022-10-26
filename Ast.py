@@ -683,9 +683,12 @@ class Syscall(Statement):
             self.args = [args]
 
     def visit(self, writer):
-        for arg, register in zip(self.args, ARG_REGISTERS):
+        for arg in self.args:
             arg.visit(writer)
-            writer.writeln('mov {}, rax'.format(register), 'Move arg into the correct sysV register.')
+            writer.writeln('push rax', 'Push arg onto stack to allow using registers multiple times.')
+
+        for register in reversed(ARG_REGISTERS[:len(self.args)]):
+            writer.writeln('pop {}'.format(register), 'Pop arg from stack to put in syscall register.')
 
         writer.writeln('mov rax, {}'.format(self.id), 'Move syscall number {} into rax.'.format(self.id))
 
@@ -706,8 +709,11 @@ class FunctionCall(Statement):
         if self.name.value not in defined_functions:
             undefined_functions.append(self.name.value)
 
-        for arg, register in zip(self.args, ARG_REGISTERS):
+        for arg in self.args:
             arg.visit(writer)
-            writer.writeln('mov {}, rax'.format(register), 'Move arg into the correct sysV register.')
+            writer.writeln('push rax', 'Push arg onto stack to allow using registers multiple times.')
+
+        for register in reversed(ARG_REGISTERS[:len(self.args)]):
+            writer.writeln('pop {}'.format(register), 'Pop arg from stack to put in function call register.')
 
         writer.writeln('call {}'.format(self.name.value))
