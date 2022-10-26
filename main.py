@@ -49,6 +49,8 @@ if __name__ == '__main__':
     arg_parser.add_argument('file', type=str, help='File to compile')
     arg_parser.add_argument('-f', '--freestanding', action='store_true', help='Compile without standard library or extensions')
     arg_parser.add_argument('-g', '--debug', action='store_true', help='Compile with DWARF support')
+    arg_parser.add_argument('-d', '--dump', action='store_true', help='Dump assembly source to stdout.')
+    arg_parser.add_argument('-o', '--output', type=str, default='a.out', help='File to write final output to.')
 
     args = arg_parser.parse_args()
 
@@ -79,10 +81,11 @@ if __name__ == '__main__':
                 f.write('\n\n')
                 f.write(asm)
 
-    print('\n')
+    if args.dump:
+        print('\n')
 
-    with open(out_file, 'r') as f:
-        print(f.read())
+        with open(out_file, 'r') as f:
+            print(f.read())
 
     if not args.freestanding:
         ext_files = ' '.join(EXT_FILES)
@@ -94,7 +97,7 @@ if __name__ == '__main__':
     else:
         debug_args = ''
 
-    cmd = 'nasm -felf64 {} {} -o out.o && gcc {} out.o {} -o out'.format(debug_args, out_file, linked_libs, ext_files)
+    cmd = 'nasm -felf64 {} {} -o out.o && gcc {} out.o {} -o {}'.format(debug_args, out_file, linked_libs, ext_files, args.output)
 
     print(cmd)
     os.system(cmd)
