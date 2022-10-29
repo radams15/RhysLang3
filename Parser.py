@@ -3,7 +3,7 @@ import warnings
 from rply import ParserGenerator
 from Lexer import lg
 
-from Ast import *
+from x86Ast import *
 
 warnings.filterwarnings("ignore") # Disable warnings
 
@@ -277,8 +277,8 @@ def function_call(p):
     elif len(p) == 4:
         return FunctionCall(p[0], p[2])
 
-@pg.production('syscall : SYSCALL INT PAREN_OPEN PAREN_CLOSE')
-@pg.production('syscall : SYSCALL INT PAREN_OPEN args_list PAREN_CLOSE')
+@pg.production('syscall : SYSCALL IDENTIFIER PAREN_OPEN PAREN_CLOSE')
+@pg.production('syscall : SYSCALL IDENTIFIER PAREN_OPEN args_list PAREN_CLOSE')
 def syscall(p):
     if len(p) == 4:
         return Syscall(p[1], [])

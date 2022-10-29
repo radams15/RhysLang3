@@ -14,6 +14,16 @@ _start:
     syscall
 '''
 
+SYSCALL_TABLE = {
+    'read': 0,
+    'write': 1,
+    'open': 2,
+    'close': 3,
+
+
+    'exit': 60,
+}
+
 
 class x86_64GlobalGenerator(GlobalGenerator):
     def make(self, size, *data, type='global', name=None):
@@ -71,7 +81,7 @@ def write_debug(writer, token):
     pass
     #writer.writeln(f'%line {token.source_pos.lineno}+0 test.rl')
 
-def init_parser(def_start=True):
+def reset_parser(def_start=True):
     global undefined_functions, defined_functions, globals_gen, label_generator, scope, define_start
 
     undefined_functions = []
@@ -595,8 +605,11 @@ class Loop(Statement):
         writer.writeln('{}:'.format(end), ident_inc=-1)
 
 class Syscall(Statement):
-    def __init__(self, id, args):
-        self.id = id.value
+    def __init__(self, name, args):
+        if name.value not in SYSCALL_TABLE:
+            raise Exception(f'No known syscall: {name.value}')
+
+        self.id = SYSCALL_TABLE[name.value]
 
         if type(args) == list:
             self.args = args
@@ -638,3 +651,5 @@ class FunctionCall(Statement):
             writer.writeln('pop {}'.format(register), 'Pop arg from stack to put in function call register.')
 
         writer.writeln('call {}'.format(self.name.value))
+
+reset_parser()

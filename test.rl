@@ -9,7 +9,5 @@ fn main() -> int {
 
     fclose(fd);
 
-    puts(done_str);
-
     return 1;
 }

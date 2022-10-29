@@ -5,7 +5,7 @@ from glob import glob
 import argparse
 
 from Lexer import lexer
-from Parser import parser, init_parser
+from Parser import parser, reset_parser
 from Writer import Writer
 
 LIB_DIR = 'lib'
@@ -38,7 +38,7 @@ def compile_lib(name):
 
 
 def compile_libs():
-    init_parser(def_start=False)
+    reset_parser(def_start=False)
 
     libs = {
         x : compile_lib(x)
@@ -86,7 +86,7 @@ if __name__ == '__main__':
 
     tokens = lexer.lex(data)
 
-    init_parser()
+    reset_parser()
     program = parser.parse(tokens)
 
     out_file = f'{build_dir}/out.nasm'

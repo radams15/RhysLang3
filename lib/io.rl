@@ -1,3 +1,7 @@
 fn puts(data: str) -> int {
-    return syscall 1(1, data, strlen(data)+1);
+    return syscall write(1, data, strlen(data)+1);
+}
+
+fn exit(code: int) -> void {
+    syscall exit(code);
 }
