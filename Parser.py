@@ -20,7 +20,7 @@ pg = ParserGenerator(
 
 def flatten_list(inp, out):
     for item in inp:
-        if isinstance(item, list):
+        if isinstance(item, list) or isinstance(item, tuple):
             flatten_list(item, out)
         else:
             out.append(item)
@@ -28,7 +28,6 @@ def flatten_list(inp, out):
 
 @pg.production('program : def_list')
 def program(p):
-    print(p)
     return Program(p[0])
 
 @pg.production('def_list : def_item | def_list def_item')
@@ -42,7 +41,7 @@ def global_list(p):
 
     return params
 
-@pg.production('def_item : global | function_def | function_decl')
+@pg.production('def_item : global | function_def | function_decl | struct_def')
 def def_item(p):
     return p[0]
 
@@ -62,6 +61,29 @@ def function_def(p):
     else:
         return Function(p[1], p[5], [], p[6])
 
+@pg.production('struct_def : STRUCT IDENTIFIER BRACE_OPEN struct_members BRACE_CLOSE')
+def struct_def(p):
+    methods = [x for x in p[3] if type(x) == Function]
+    members = [x for x in p[3] if x not in methods]
+
+    return StructDef(p[1], members, methods)
+
+@pg.production('struct_members : param SEMICOLON | struct_members function_def | struct_members function_decl | struct_members param SEMICOLON')
+def struct_members(p):
+    if len(p) == 2 and p[1].name == 'SEMICOLON':
+        return p[0]
+
+    params = []
+
+    flatten_list(p, params)
+
+    params = [x for x in params if x.name != 'SEMICOLON']
+
+    return params
+
+@pg.production('struct_member_ref : IDENTIFIER DOT IDENTIFIER')
+def struct_member_ref(p):
+    return StructGet(p[0], p[2])
 
 @pg.production('function_decl : FN IDENTIFIER PAREN_OPEN PAREN_CLOSE SINGLE_ARROW type SEMICOLON')
 @pg.production('function_decl : FN IDENTIFIER PAREN_OPEN param_list PAREN_CLOSE SINGLE_ARROW type SEMICOLON')
@@ -83,7 +105,11 @@ def function_list(p):
 
     return params
 
-@pg.production('param_list : IDENTIFIER COLON type | param_list COMMA IDENTIFIER COLON type')
+@pg.production('param : IDENTIFIER COLON type')
+def param(p):
+    return (p[0], p[2])
+
+@pg.production('param_list : param | param_list COMMA param')
 def param_list(p):
     if len(p) == 1:
         return p[0]
@@ -92,7 +118,7 @@ def param_list(p):
 
     flatten_list(p, params)
 
-    params = [x for x in params if x.name not in ('COLON', 'COMMA')]
+    params = [x for x in params if x.name != 'COMMA']
 
     return params
 
@@ -170,9 +196,13 @@ def statement(p):
 
     return p[0]
 
-@pg.production('expr : VAR IDENTIFIER COLON type | VAR IDENTIFIER COLON type EQUAL expr | IDENTIFIER EQUAL expr | ternary')
+@pg.production('struct_set : struct_member_ref EQUAL expr')
+def struct_set(p):
+    return StructSet(p[0], p[2])
+
+@pg.production('expr : VAR IDENTIFIER COLON type | VAR IDENTIFIER COLON type EQUAL expr | name EQUAL expr | struct_set | ternary')
 def expression(p):
-    if len(p) == 1:  # Just ternary
+    if len(p) == 1:  # Just ternary or struct_set
         return p[0]
 
     elif len(p) == 4:  # Declaration
@@ -180,7 +210,7 @@ def expression(p):
         return Declaration(name, type)
 
     elif len(p) == 3: # Assignment
-            return Assignment(p[0], p[2])
+        return Assignment(p[0], p[2])
 
     elif len(p) == 6:  # Definition
         name, type, expr = p[1], p[3], p[5]
@@ -248,10 +278,10 @@ def term(p):
         left, op, right = p[:3]
         return Binary.choose(op, left, right)
 
-@pg.production('factor : PAREN_OPEN expr PAREN_CLOSE | unary_op factor | syscall | function_call | primitive | IDENTIFIER')
+@pg.production('factor : PAREN_OPEN expr PAREN_CLOSE | unary_op factor | syscall | function_call | method_call | primitive | name')
 def factor(p):
     if len(p) == 1: # Const, var name or function call
-        if isinstance(p[0], FunctionCall) or isinstance(p[0], Syscall):
+        if isinstance(p[0], FunctionCall) or isinstance(p[0], StructMethodCall) or isinstance(p[0], Syscall) or isinstance(p[0], StructGet):
             return p[0]
         else:
             if p[0].name in ('INT', 'FLOAT'):
@@ -277,6 +307,10 @@ def function_call(p):
         return FunctionCall(p[0], [])
     elif len(p) == 4:
         return FunctionCall(p[0], p[2])
+
+@pg.production('method_call : IDENTIFIER DOT function_call')
+def method_call(p):
+    return StructMethodCall(p[0], p[2])
 
 @pg.production('syscall : SYSCALL IDENTIFIER PAREN_OPEN PAREN_CLOSE')
 @pg.production('syscall : SYSCALL IDENTIFIER PAREN_OPEN args_list PAREN_CLOSE')
@@ -306,7 +340,11 @@ def equality_op(p):
     return p[0]
 
 @pg.production('type : IDENTIFIER')
-def type(p):
+def var_type(p):
+    return p[0]
+
+@pg.production('name : IDENTIFIER | struct_member_ref')
+def name(p):
     return p[0]
 
 @pg.production('primitive : INT | CHAR | STRING')

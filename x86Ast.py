@@ -57,14 +57,17 @@ globals_gen: GlobalGenerator = None
 label_generator: LabelGenerator = None
 undefined_functions: list = None
 defined_functions: list = None
-
-int_size = 8
+defined_structs: dict = dict()
 
 ARG_REGISTERS = ['rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9']
 
 def sizeof(type):
     if type in ('int', 'char', 'str'):
         return 8
+
+    if type in defined_structs.keys():
+        return 8 # Pointer
+        # return defined_structs[type].size()
 
     else:
         raise Exception('Unknown type: {}'.format(type))
@@ -81,16 +84,15 @@ def write_debug(writer, token):
     pass
     #writer.writeln(f'%line {token.source_pos.lineno}+0 test.rl')
 
-def reset_parser(def_start=True):
-    global undefined_functions, defined_functions, globals_gen, label_generator, scope, define_start
+def reset_parser():
+    global undefined_functions, defined_functions, defined_structs, globals_gen, label_generator, scope
 
     undefined_functions = []
     defined_functions = []
+    #defined_structs = dict()
     globals_gen = x86_64GlobalGenerator()
     label_generator = LabelGenerator()
     scope = Scope()
-    define_start = def_start
-
 
 class Program(BaseBox):
     def __init__(self, toplevels):
@@ -99,7 +101,7 @@ class Program(BaseBox):
         else:
             self.toplevels = [toplevels]
 
-    def visit(self, writer):
+    def visit(self, writer, freestanding):
         global undefined_functions, globals_gen, define_start
 
         writer.writeln('section .text')
@@ -110,18 +112,65 @@ class Program(BaseBox):
         for undefined_function in undefined_functions:
             writer.writeln('extern {}'.format(undefined_function))
 
-        if define_start:
+        if freestanding:
             writer.writeln(ENTRYPOINT)
 
         writer.writeln('section .data')
 
         writer.write(globals_gen.generate())
 
+    def __repr__(self):
+        out = 'Program:\n'
+
+        for toplevel in self.toplevels:
+            out += str(toplevel)
+
+        return out
+
+class StructDef(BaseBox):
+    def __init__(self, name, memebers, methods):
+        self.name = name.value
+        self.members = [(memebers[x].value , memebers[x + 1].value) for x in range(0, len(memebers), 2)]
+        self.methods: list[Function] = methods
+
+        self.indexes = dict()
+
+        current_index = 0
+        for name, type in self.members:
+            size = sizeof(type)
+            self.indexes[name] = current_index
+            current_index += size
+
+        defined_structs[self.name] = self
+
+    def visit(self, writer):
+        for m in self.methods:
+            m.name = method_hash(self.name, m.name)
+            m.arity += 1
+            m.args = [('this', self.name)] + m.args
+
+            m.visit(writer)
+
+    def size(self):
+        return (
+            sum(
+                [
+                    sizeof(type)
+                    for name, type in self.members
+                ]
+            )
+        )
+
+    def __repr__(self):
+        return '''Struct({}){
+    {}
+}'''.format(self.name.value, "\n\t".join([x[0] + ": " + x[1] for x in self.members]))
+
 class Function(BaseBox):
     def __init__(self, name, return_val, args, block=None):
-        self.name = name
+        self.name = name.value
         self.return_val = return_val
-        self.args = [(args[x],args[x+1]) for x in range(0, len(args), 2)]
+        self.args = [(args[x].value, args[x+1].value) for x in range(0, len(args), 2)]
         self.arity = len(args)
         self.block = block
 
@@ -129,14 +178,14 @@ class Function(BaseBox):
         global scope
 
         if not self.block:
-            undefined_functions.append(self.name.value)
+            undefined_functions.append(self.name)
             return
 
-        defined_functions.append(self.name.value)
+        defined_functions.append(self.name)
 
-        writer.writeln(f'global {self.name.value}')
+        writer.writeln(f'global {self.name}')
         write_debug(writer, self.name)
-        writer.writeln(f'{self.name.value}:')
+        writer.writeln(f'{self.name}:')
         writer.ident += 1
 
         writer.writeln(f'push rbp')
@@ -145,13 +194,13 @@ class Function(BaseBox):
         scope = scope.child()
 
         for (arg_name, arg_type), register in zip(self.args, ARG_REGISTERS):
-            size = sizeof(arg_type.value)
+            size = sizeof(arg_type)
 
             offset = scope.stack_index
 
-            writer.writeln(f'push {register}', 'Push argument {} onto stack at position {}'.format(arg_name.value, offset))
+            writer.writeln(f'push {register}', 'Push argument {} onto stack at position {}'.format(arg_name, offset))
 
-            scope.set(arg_name.value, StackLocation(offset))
+            scope.set(arg_name, StackLocation(offset, arg_type))
 
             scope.stack_index -= size
 
@@ -165,6 +214,11 @@ class Function(BaseBox):
         writer.writeln('\n')
 
         writer.ident -= 1
+
+        def __repr__(self):
+            return '''Function {} ({}){
+        {}
+    }'''.format(self.name.value, "\n\t".join([x[0] + ": " + x[1] for x in self.args]), str(self.block))
 
 class Statement(BaseBox):
     pass
@@ -183,6 +237,9 @@ class Return(Statement):
         writer.writeln(f'pop rbp')
 
         writer.writeln(f'ret')
+
+    def __repr__(self):
+        return f'Return {str(self.expr)}'
 
 class Unary(Expression):
     def __init__(self, operator, expr):
@@ -421,10 +478,10 @@ class Division(Binary):
 
 class Variable(Expression):
     def __init__(self, name):
-        self.name = name
+        self.name = name.value
 
     def visit(self, writer):
-        obj = scope.get(self.name.value)
+        obj = scope.get(self.name)
 
         if type(obj) == StackLocation:
             writer.writeln(f'mov rax, [rbp+{obj.index}]')
@@ -462,7 +519,7 @@ class Global(Expression):
             value = [value]
 
         globals_gen.make(datasize(self.type.value), *value, name=self.name.value)
-        scope.set(self.name.value, GlobalLocation(self.name.value))
+        scope.set(self.name.value, GlobalLocation(self.name.value, self.type))
 
 class Char(Constant):
     def __init__(self, data):
@@ -484,8 +541,8 @@ class String(Constant):
 
 class Declaration(Expression):
     def __init__(self, name, type, initialiser=None):
-        self.name = name
-        self.type = type
+        self.name = name.value
+        self.type = type.value
         self.initialiser = initialiser
 
     def visit(self, writer):
@@ -496,13 +553,13 @@ class Declaration(Expression):
 
         write_debug(writer, self.name)
 
-        size = sizeof(self.type.value)
+        size = sizeof(self.type)
 
         offset = scope.stack_index
 
-        writer.writeln('push rax', 'push variable {} of size {} onto stack'.format(self.name.value, size))
+        writer.writeln('push rax', 'push variable {} of size {} onto stack'.format(self.name, size))
 
-        scope.set(self.name.value, StackLocation(offset))
+        scope.set(self.name, StackLocation(offset, self.type))
 
         scope.stack_index -= size
 
@@ -623,7 +680,7 @@ class Syscall(Statement):
 
 class FunctionCall(Statement):
     def __init__(self, name, args):
-        self.name = name
+        self.name = name.value
 
         if type(args) == list:
             self.args = args
@@ -632,8 +689,8 @@ class FunctionCall(Statement):
 
     def visit(self, writer):
         global undefined_functions
-        if self.name.value not in defined_functions:
-            undefined_functions.append(self.name.value)
+        if self.name not in defined_functions:
+            undefined_functions.append(self.name)
 
         for arg in self.args:
             arg.visit(writer)
@@ -642,6 +699,73 @@ class FunctionCall(Statement):
         for register in reversed(ARG_REGISTERS[:len(self.args)]):
             writer.writeln('pop {}'.format(register), 'Pop arg from stack to put in function call register.')
 
-        writer.writeln('call {}'.format(self.name.value))
+        writer.writeln('call {}'.format(self.name))
+
+class StructGet(Expression):
+    def __init__(self, struct_name, item_name):
+        self.struct_name = struct_name.value
+        self.item_name = item_name.value
+
+    def visit(self, writer):
+        global scope
+
+        struct = scope.get(self.struct_name)
+
+        struct_type: StructDef = defined_structs[struct.type]
+        struct_index = struct_type.indexes[self.item_name]
+
+        #stack_index = struct.index + struct_index
+
+        writer.writeln(f'mov rax, [rbp+{struct.index}]', f'Move {struct_type.name} to rax')
+        writer.writeln(f'mov rax, [rax+{struct_index}]', f'Move member {self.item_name} from rax+{struct_index} to rax')
+
+class StructSet(Expression):
+    def __init__(self, member, expr):
+        self.member = member
+        self.expr = expr
+
+    def visit(self, writer):
+        global scope
+
+        struct = scope.get(self.member.struct_name)
+
+        struct_type: StructDef = defined_structs[struct.type]
+        struct_index = struct_type.indexes[self.member.item_name]
+
+        #stack_index = struct.index + struct_index
+
+        self.expr.visit(writer) # Move value into rax
+        writer.writeln(f'push rax', f'Push target value to stack')
+        writer.writeln(f'pop rdx', f'Pop target value into rdx')
+
+        writer.writeln(f'mov rax, [rbp+{struct.index}]', f'Move {struct_type.name} from stack into rax')
+        writer.writeln(f'mov [rax+{struct_index}], rdx', f'Move target value into {self.member.item_name} at position {struct_index}')
+        writer.writeln(f'mov [rbp+{struct.index}], rax', f'Move {struct_type.name} back onto stack')
+
+class StructMethodCall(Expression):
+    def __init__(self, member, function):
+        self.member = member.value
+        self.function: FunctionCall = function
+
+    def visit(self, writer):
+        global scope
+
+        struct = scope.get(self.member)
+
+        struct_type: StructDef = defined_structs[struct.type]
+
+        method_fullname = method_hash(struct_type.name, self.function.name)
+
+        self.function.name = method_fullname
+        self.function.args = [
+                                 Variable(
+                                     Token(
+                                        'VARIABLE',
+                                         self.member
+                                     )
+                                 )
+                             ] + self.function.args
+
+        self.function.visit(writer)
 
 reset_parser()

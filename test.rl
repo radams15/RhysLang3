@@ -2,17 +2,30 @@ global file_name: str = "out.txt";
 global to_write: str = "hello world: this is text!\n\n";
 global done_str: str = "Done!\n";
 
-/*struct Person {
+struct Person {
+    profession: str;
     name: str;
     age: int;
-}*/
+
+    fn ageafter(years: int) -> int {
+        return this.age + years;
+    }
+}
 
 fn main() -> int {
-    var fd: int = fopen(file_name, 'w');
+    var to_add: int = 5;
+    var jeff: Person = malloc(24);
 
-    fwrite(fd, to_write);
+    jeff.name = "Jeff\n";
+    jeff.age = 10;
 
-    fclose(fd);
+    writei(jeff.ageafter(to_add));
+
+    /*var fd: int = fopen(file_name, 'w');
+
+    fwrite(fd, jeff.name);
+
+    fclose(fd);*/
 
     return 1;
 }
