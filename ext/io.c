@@ -1,6 +1,6 @@
-#define NULL ((void*) 0)
+#include <stdio.h>
 
-int strlen(char* inp){
+/*int strlen(char* inp) {
     int out=0;
 
     while(*inp != '\0'){
@@ -9,4 +9,10 @@ int strlen(char* inp){
     }
 
     return out;
+}*/
+
+int writei(int i){
+    printf("%d\n", i);
+
+    return 0;
 }

@@ -30,7 +30,7 @@ def compile_lib(name):
     with io.StringIO() as stream:
         writer = Writer(stream)
 
-        program.visit(writer)
+        program.visit(writer, False)
 
         asm = stream.getvalue()
 
@@ -38,7 +38,7 @@ def compile_lib(name):
 
 
 def compile_libs():
-    reset_parser(def_start=False)
+    reset_parser()
 
     libs = {
         x : compile_lib(x)
@@ -94,7 +94,7 @@ if __name__ == '__main__':
     with open(out_file, 'w') as f:
         writer = Writer(f)
 
-        program.visit(writer)
+        program.visit(writer, args.freestanding)
 
     if args.dump:
         print('\n')
@@ -130,7 +130,7 @@ if __name__ == '__main__':
             obj_file = os.path.basename(ext_file).replace('.c', '.o')
             obj_path = os.path.join(ext_build_dir, obj_file)
 
-            cmd = f'gcc -ffreestanding -nostdlib -c {ext_file} -o {obj_path}'
+            cmd = f'gcc -c {ext_file} -o {obj_path}'
             print(cmd)
             os.system(cmd)
 
@@ -149,7 +149,12 @@ if __name__ == '__main__':
 
     ### Link source files
 
-    cmd = 'ld {} {} {} -o {}'.format(' '.join(ext_objects), librl_object, source_object, args.output)
+    if args.freestanding:
+        ld = 'ld'
+    else:
+        ld = 'gcc'
+
+    cmd = '{} {} {} {} -o {}'.format(ld, ' '.join(ext_objects), librl_object, source_object, args.output)
     print(cmd)
     os.system(cmd)
 

@@ -3,23 +3,29 @@ global to_write: str = "hello world: this is text!\n\n";
 global done_str: str = "Done!\n";
 
 struct Person {
-    profession: str,
-    name: str,
-    age: int
+    profession: str;
+    name: str;
+    age: int;
+
+    fn ageafter(years: int) -> int {
+        return this.age;
+    }
 }
 
 fn main() -> int {
+    var to_add: int = 2;
     var jeff: Person = 0;
 
-    jeff.name = "Jeff";
+    jeff.name = "Jeff\n";
+    jeff.age = 10;
 
-    syscall write(1, jeff.name, 29);
+    writei(Person____ageafter(jeff, to_add));
 
     /*var fd: int = fopen(file_name, 'w');
 
     fwrite(fd, jeff.name);
 
-    fclose(fd);
+    fclose(fd);*/
 
-    return 1;*/
+    return 1;
 }

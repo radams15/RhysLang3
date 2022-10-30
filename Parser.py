@@ -20,7 +20,7 @@ pg = ParserGenerator(
 
 def flatten_list(inp, out):
     for item in inp:
-        if isinstance(item, list):
+        if isinstance(item, list) or isinstance(item, tuple):
             flatten_list(item, out)
         else:
             out.append(item)
@@ -61,12 +61,28 @@ def function_def(p):
     else:
         return Function(p[1], p[5], [], p[6])
 
-@pg.production('struct_def : STRUCT IDENTIFIER BRACE_OPEN param_list BRACE_CLOSE')
+@pg.production('struct_def : STRUCT IDENTIFIER BRACE_OPEN struct_members BRACE_CLOSE')
 def struct_def(p):
-    return StructDef(p[1], p[3])
+    methods = [x for x in p[3] if type(x) == Function]
+    members = [x for x in p[3] if x not in methods]
 
-@pg.production('struct_member : IDENTIFIER DOT IDENTIFIER')
-def struct_member(p):
+    return StructDef(p[1], members, methods)
+
+@pg.production('struct_members : param SEMICOLON | struct_members function_def | struct_members function_decl | struct_members param SEMICOLON')
+def struct_members(p):
+    if len(p) == 2 and p[1].name == 'SEMICOLON':
+        return p[0]
+
+    params = []
+
+    flatten_list(p, params)
+
+    params = [x for x in params if x.name != 'SEMICOLON']
+
+    return params
+
+@pg.production('struct_member_ref : IDENTIFIER DOT IDENTIFIER')
+def struct_member_ref(p):
     return StructGet(p[0], p[2])
 
 @pg.production('function_decl : FN IDENTIFIER PAREN_OPEN PAREN_CLOSE SINGLE_ARROW type SEMICOLON')
@@ -89,7 +105,11 @@ def function_list(p):
 
     return params
 
-@pg.production('param_list : IDENTIFIER COLON type | param_list COMMA IDENTIFIER COLON type')
+@pg.production('param : IDENTIFIER COLON type')
+def param(p):
+    return (p[0], p[2])
+
+@pg.production('param_list : param | param_list COMMA param')
 def param_list(p):
     if len(p) == 1:
         return p[0]
@@ -98,7 +118,7 @@ def param_list(p):
 
     flatten_list(p, params)
 
-    params = [x for x in params if x.name not in ('COLON', 'COMMA')]
+    params = [x for x in params if x.name != 'COMMA']
 
     return params
 
@@ -176,7 +196,7 @@ def statement(p):
 
     return p[0]
 
-@pg.production('struct_set : struct_member EQUAL expr')
+@pg.production('struct_set : struct_member_ref EQUAL expr')
 def struct_set(p):
     return StructSet(p[0], p[2])
 
@@ -316,10 +336,10 @@ def equality_op(p):
     return p[0]
 
 @pg.production('type : IDENTIFIER')
-def type(p):
+def var_type(p):
     return p[0]
 
-@pg.production('name : IDENTIFIER | struct_member')
+@pg.production('name : IDENTIFIER | struct_member_ref')
 def name(p):
     return p[0]
 

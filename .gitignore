@@ -1,4 +1,4 @@
-/peda-session-out.txt
+/peda-session-*
 /out.nasm
 /out
 /.gdb_history
