@@ -16,6 +16,10 @@ def unicode_deescape(inp):
 
     return data
 
+
+def next_power_of_2(x):
+    return 2 if x <= 2 else 2**(x - 1).bit_length()
+
 class LabelGenerator:
     def __init__(self, start=0):
         self.counter = start
@@ -29,12 +33,14 @@ class LabelGenerator:
         return (start, start+'_end')
 
 class StackLocation:
-    def __init__(self, index):
+    def __init__(self, index, type):
         self.index = index
+        self.type = type
 
 class GlobalLocation:
-    def __init__(self, name):
+    def __init__(self, name, type):
         self.name = name
+        self.type = type
 
 class Scope:
     def __init__(self, parent=None, index=0):
@@ -49,6 +55,7 @@ class Scope:
         return Scope(self)
 
     def _set(self, name, value):
+        #print(f'Set {name} = {value}')
         self.values[name] = value
 
     def set(self, name, value):

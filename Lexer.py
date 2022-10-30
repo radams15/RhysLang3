@@ -34,6 +34,7 @@ lg.add('QUESTION', r'\?')
 lg.add('SEMICOLON', r';')
 lg.add('COLON', r':')
 lg.add('COMMA', r',')
+lg.add('DOT', r'\.')
 
 lg.add('FN', r'fn')
 lg.add('REQUIRE', r'require')
@@ -62,6 +63,6 @@ lg.add('IDENTIFIER', r'[a-zA-Z][a-zA-Z0-9_]*')
 
 lg.ignore(r'\s+')
 #lg.ignore(r'^\s*\/\/[\s\S]*$')
-lg.ignore(r'\/\*[\s\S]*\*\/')
+lg.ignore(r'\/\*[\s\S]*?\*\/')
 
 lexer = lg.build()

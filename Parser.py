@@ -28,7 +28,6 @@ def flatten_list(inp, out):
 
 @pg.production('program : def_list')
 def program(p):
-    print(p)
     return Program(p[0])
 
 @pg.production('def_list : def_item | def_list def_item')
@@ -42,7 +41,7 @@ def global_list(p):
 
     return params
 
-@pg.production('def_item : global | function_def | function_decl')
+@pg.production('def_item : global | function_def | function_decl | struct_def')
 def def_item(p):
     return p[0]
 
@@ -62,6 +61,13 @@ def function_def(p):
     else:
         return Function(p[1], p[5], [], p[6])
 
+@pg.production('struct_def : STRUCT IDENTIFIER BRACE_OPEN param_list BRACE_CLOSE')
+def struct_def(p):
+    return StructDef(p[1], p[3])
+
+@pg.production('struct_member : IDENTIFIER DOT IDENTIFIER')
+def struct_member(p):
+    return StructGet(p[0], p[2])
 
 @pg.production('function_decl : FN IDENTIFIER PAREN_OPEN PAREN_CLOSE SINGLE_ARROW type SEMICOLON')
 @pg.production('function_decl : FN IDENTIFIER PAREN_OPEN param_list PAREN_CLOSE SINGLE_ARROW type SEMICOLON')
@@ -170,9 +176,13 @@ def statement(p):
 
     return p[0]
 
-@pg.production('expr : VAR IDENTIFIER COLON type | VAR IDENTIFIER COLON type EQUAL expr | IDENTIFIER EQUAL expr | ternary')
+@pg.production('struct_set : struct_member EQUAL expr')
+def struct_set(p):
+    return StructSet(p[0], p[2])
+
+@pg.production('expr : VAR IDENTIFIER COLON type | VAR IDENTIFIER COLON type EQUAL expr | name EQUAL expr | struct_set | ternary')
 def expression(p):
-    if len(p) == 1:  # Just ternary
+    if len(p) == 1:  # Just ternary or struct_set
         return p[0]
 
     elif len(p) == 4:  # Declaration
@@ -180,7 +190,7 @@ def expression(p):
         return Declaration(name, type)
 
     elif len(p) == 3: # Assignment
-            return Assignment(p[0], p[2])
+        return Assignment(p[0], p[2])
 
     elif len(p) == 6:  # Definition
         name, type, expr = p[1], p[3], p[5]
@@ -248,10 +258,10 @@ def term(p):
         left, op, right = p[:3]
         return Binary.choose(op, left, right)
 
-@pg.production('factor : PAREN_OPEN expr PAREN_CLOSE | unary_op factor | syscall | function_call | primitive | IDENTIFIER')
+@pg.production('factor : PAREN_OPEN expr PAREN_CLOSE | unary_op factor | syscall | function_call | primitive | name')
 def factor(p):
     if len(p) == 1: # Const, var name or function call
-        if isinstance(p[0], FunctionCall) or isinstance(p[0], Syscall):
+        if isinstance(p[0], FunctionCall) or isinstance(p[0], Syscall) or isinstance(p[0], StructGet):
             return p[0]
         else:
             if p[0].name in ('INT', 'FLOAT'):
@@ -307,6 +317,10 @@ def equality_op(p):
 
 @pg.production('type : IDENTIFIER')
 def type(p):
+    return p[0]
+
+@pg.production('name : IDENTIFIER | struct_member')
+def name(p):
     return p[0]
 
 @pg.production('primitive : INT | CHAR | STRING')
