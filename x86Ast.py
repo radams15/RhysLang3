@@ -93,27 +93,19 @@ def reset_parser(def_start=True):
 
 
 class Program(BaseBox):
-    def __init__(self, functions, globals):
-        if type(functions) == list:
-            self.functions = functions
+    def __init__(self, toplevels):
+        if type(toplevels) == list:
+            self.toplevels = toplevels
         else:
-            self.functions = [functions]
-
-        if type(globals) == list:
-            self.globals = globals
-        else:
-            self.globals = [globals]
+            self.toplevels = [toplevels]
 
     def visit(self, writer):
         global undefined_functions, globals_gen, define_start
 
-        for global_var in self.globals:
-            global_var.visit(writer)
-
         writer.writeln('section .text')
 
-        for function in self.functions:
-            function.visit(writer)
+        for toplevel in self.toplevels:
+            toplevel.visit(writer)
 
         for undefined_function in undefined_functions:
             writer.writeln('extern {}'.format(undefined_function))

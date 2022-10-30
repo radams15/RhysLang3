@@ -26,15 +26,12 @@ def flatten_list(inp, out):
             out.append(item)
 
 
-@pg.production('program : global_list function_list')
-@pg.production('program : function_list')
+@pg.production('program : def_list')
 def program(p):
-    if len(p) == 1:
-        return Program(p[0], [])
-    else:
-        return Program(p[1], p[0])
+    print(p)
+    return Program(p[0])
 
-@pg.production('global_list : global | global_list global')
+@pg.production('def_list : def_item | def_list def_item')
 def global_list(p):
     if len(p) == 1:
         return p[0]
@@ -44,6 +41,10 @@ def global_list(p):
     flatten_list(p, params)
 
     return params
+
+@pg.production('def_item : global | function_def | function_decl')
+def def_item(p):
+    return p[0]
 
 @pg.production('global : GLOBAL IDENTIFIER COLON type SEMICOLON')
 @pg.production('global : GLOBAL IDENTIFIER COLON type EQUAL primitive SEMICOLON')
