@@ -1,4 +1,18 @@
-fn fopen(name: str, mode: char) -> int {
+struct File {
+    fd: int;
+
+    fn write(to_write: str) -> int {
+        var len: int = strlen(to_write);
+
+        return syscall write(this.fd, to_write, len);
+    }
+
+    fn close() -> int {
+        return syscall close(this.fd);
+    }
+}
+
+fn fopen(name: str, mode: char) -> File {
     var modecode: int = 100;
     if(mode == 'r'){
         modecode = modecode | 0;
@@ -6,15 +20,11 @@ fn fopen(name: str, mode: char) -> int {
         modecode = modecode | 2;
     }
 
-    return syscall open(name, modecode);
-}
+    var fd: int = syscall open(name, modecode);
 
-fn fwrite(fd: int, to_write: str) -> int {
-    var len: int = strlen(to_write);
+    var out: File = malloc(8);
 
-    return syscall write(fd, to_write, len);
-}
+    out.fd = fd;
 
-fn fclose(fd: int, to_write: str) -> int {
-    return syscall close(fd);
+    return out;
 }

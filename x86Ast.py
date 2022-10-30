@@ -748,13 +748,16 @@ class StructMethodCall(Expression):
         self.function: FunctionCall = function
 
     def visit(self, writer):
-        global scope
+        global scope, defined_functions, undefined_functions
 
         struct = scope.get(self.member)
 
         struct_type: StructDef = defined_structs[struct.type]
 
         method_fullname = method_hash(struct_type.name, self.function.name)
+
+        if method_fullname not in defined_functions:
+            undefined_functions.append(method_fullname)
 
         self.function.name = method_fullname
         self.function.args = [

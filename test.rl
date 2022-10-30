@@ -19,13 +19,12 @@ fn main() -> int {
     jeff.name = "Jeff\n";
     jeff.age = 10;
 
-    writei(jeff.ageafter(to_add));
 
-    /*var fd: int = fopen(file_name, 'w');
+    var file: File = fopen(file_name, 'w');
 
-    fwrite(fd, jeff.name);
+    file.write(jeff.name);
 
-    fclose(fd);*/
+    file.close();
 
     return 1;
 }
