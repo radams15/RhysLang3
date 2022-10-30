@@ -14,7 +14,7 @@ struct Person {
 
 fn main() -> int {
     var to_add: int = 5;
-    var jeff: Person = malloc(24);
+    var jeff: Person = alloc Person;
 
     jeff.name = "Jeff\n";
     jeff.age = 10;

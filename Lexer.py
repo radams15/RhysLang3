@@ -49,6 +49,7 @@ lg.add('BREAK', r'break')
 lg.add('CONTINUE', r'continue')
 lg.add('SYSCALL', r'syscall')
 lg.add('STRUCT', r'struct')
+lg.add('ALLOC', r'alloc')
 
 lg.add('PAREN_OPEN', r'\(')
 lg.add('PAREN_CLOSE', r'\)')

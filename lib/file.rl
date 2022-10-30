@@ -20,9 +20,9 @@ fn fopen(name: str, mode: char) -> File {
         modecode = modecode | 2;
     }
 
-    var fd: int = syscall open(name, modecode);
+    var fd: int = syscall open(name, modecode, 777);
 
-    var out: File = malloc(8);
+    var out: File = alloc File;
 
     out.fd = fd;
 

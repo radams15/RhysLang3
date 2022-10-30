@@ -48,6 +48,10 @@ class GlobalLocation:
         self.name = name
         self.type = type
 
+class StaticItem:
+    def __init__(self, value):
+        self.value = value
+
 class Scope:
     def __init__(self, parent=None, index=0):
         self.values = dict()

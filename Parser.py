@@ -278,7 +278,7 @@ def term(p):
         left, op, right = p[:3]
         return Binary.choose(op, left, right)
 
-@pg.production('factor : PAREN_OPEN expr PAREN_CLOSE | unary_op factor | syscall | function_call | method_call | primitive | name')
+@pg.production('factor : PAREN_OPEN expr PAREN_CLOSE | unary_op factor | syscall | alloc | function_call | method_call | primitive | name')
 def factor(p):
     if len(p) == 1: # Const, var name or function call
         if isinstance(p[0], FunctionCall) or isinstance(p[0], StructMethodCall) or isinstance(p[0], Syscall) or isinstance(p[0], StructGet):
@@ -320,6 +320,26 @@ def syscall(p):
     elif len(p) == 5:
         return Syscall(p[1], p[3])
 
+@pg.production('alloc : ALLOC IDENTIFIER')
+def alloc(p):
+    """
+    Some syntactic sugar to convert 'alloc Type' => 'malloc(sizeof(Type))'
+    """
+    return FunctionCall(
+        Token('IDENTIFIER', 'malloc'),
+        [
+            FunctionCall(
+                Token('IDENTIFIER', 'sizeof'),
+                [
+                    Variable(
+                        p[1]
+                    )
+                ]
+            )
+        ]
+    )
+
+
 @pg.production('unary_op : EXCLAMATION | TILDE | MINUS')
 def unary_op(p):
     return p[0]
@@ -327,6 +347,7 @@ def unary_op(p):
 @pg.production('binary_op_1 : PLUS | MINUS')
 def binary_op_1(p):
     return p[0]
+
 @pg.production('binary_op_2 : MULTIPLY | DIVIDE | EXPONENT | XOR | PIPE | AMPERSAND')
 def binary_op_2(p):
     return p[0]

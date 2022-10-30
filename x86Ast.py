@@ -142,6 +142,7 @@ class StructDef(BaseBox):
             current_index += size
 
         defined_structs[self.name] = self
+        scope.set(self.name, StaticItem(self))
 
     def visit(self, writer):
         for m in self.methods:
@@ -501,7 +502,7 @@ class Constant(Expression):
         writer.writeln(f'mov rax, {self.value}')
 
     def size(self):
-        return 8
+        return 16
 
 class Global(Expression):
     def __init__(self, name, type, value=None):
@@ -688,18 +689,23 @@ class FunctionCall(Statement):
             self.args = [args]
 
     def visit(self, writer):
-        global undefined_functions
-        if self.name not in defined_functions:
-            undefined_functions.append(self.name)
+        if self.name == 'sizeof':
+            obj_type = scope.get(self.args[0].name).value
+            size = obj_type.size()
+            writer.writeln(f'mov rax, {size}', f'{obj_type.name} size is {size}')
+        else:
+            global undefined_functions
+            if self.name not in defined_functions:
+                undefined_functions.append(self.name)
 
-        for arg in self.args:
-            arg.visit(writer)
-            writer.writeln('push rax', 'Push arg onto stack to allow using registers multiple times.')
+            for arg in self.args:
+                arg.visit(writer)
+                writer.writeln('push rax', 'Push arg onto stack to allow using registers multiple times.')
 
-        for register in reversed(ARG_REGISTERS[:len(self.args)]):
-            writer.writeln('pop {}'.format(register), 'Pop arg from stack to put in function call register.')
+            for register in reversed(ARG_REGISTERS[:len(self.args)]):
+                writer.writeln('pop {}'.format(register), 'Pop arg from stack to put in function call register.')
 
-        writer.writeln('call {}'.format(self.name))
+            writer.writeln('call {}'.format(self.name))
 
 class StructGet(Expression):
     def __init__(self, struct_name, item_name):
