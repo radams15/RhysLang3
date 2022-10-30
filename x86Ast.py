@@ -655,16 +655,13 @@ class Loop(Statement):
         writer.writeln('{}:'.format(end), ident_inc=-1)
 
 class Syscall(Statement):
-    def __init__(self, name, args):
-        if name.value not in SYSCALL_TABLE:
-            raise Exception(f'No known syscall: {name.value}')
+    def __init__(self, function):
+        if function.name not in SYSCALL_TABLE:
+            raise Exception(f'No known syscall: {function.name}')
 
-        self.id = SYSCALL_TABLE[name.value]
+        self.id = SYSCALL_TABLE[function.name]
 
-        if type(args) == list:
-            self.args = args
-        else:
-            self.args = [args]
+        self.args = function.args
 
     def visit(self, writer):
         for arg in self.args:

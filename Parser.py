@@ -312,13 +312,9 @@ def function_call(p):
 def method_call(p):
     return StructMethodCall(p[0], p[2])
 
-@pg.production('syscall : SYSCALL IDENTIFIER PAREN_OPEN PAREN_CLOSE')
-@pg.production('syscall : SYSCALL IDENTIFIER PAREN_OPEN args_list PAREN_CLOSE')
+@pg.production('syscall : SYSCALL function_call')
 def syscall(p):
-    if len(p) == 4:
-        return Syscall(p[1], [])
-    elif len(p) == 5:
-        return Syscall(p[1], p[3])
+    return Syscall(p[1])
 
 @pg.production('alloc : ALLOC IDENTIFIER')
 def alloc(p):
