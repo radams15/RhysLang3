@@ -66,8 +66,8 @@ def sizeof(type):
         return 8
 
     if type in defined_structs.keys():
-        #return 8 # Pointer
-        return defined_structs[type].size()
+        return 8 # Pointer
+        # return defined_structs[type].size()
 
     else:
         raise Exception('Unknown type: {}'.format(type))
@@ -716,7 +716,8 @@ class StructGet(Expression):
 
         #stack_index = struct.index + struct_index
 
-        writer.writeln(f'mov rax, [rbp+{struct.index}+{struct_index}]', f'Move {struct_type.name} member {self.item_name} to rax')
+        writer.writeln(f'mov rax, [rbp+{struct.index}]', f'Move {struct_type.name} to rax')
+        writer.writeln(f'mov rax, [rax+{struct_index}]', f'Move member {self.item_name} from rax+{struct_index} to rax')
 
 class StructSet(Expression):
     def __init__(self, member, expr):
@@ -733,8 +734,12 @@ class StructSet(Expression):
 
         #stack_index = struct.index + struct_index
 
-        self.expr.visit(writer)
+        self.expr.visit(writer) # Move value into rax
+        writer.writeln(f'push rax', f'Push target value to stack')
+        writer.writeln(f'pop rdx', f'Pop target value into rdx')
 
-        writer.writeln(f'mov [rbp+{struct.index}+{struct_index}], rax', f'Move rax to {struct_type.name} member {self.member.item_name}')
+        writer.writeln(f'mov rax, [rbp+{struct.index}]', f'Move {struct_type.name} from stack into rax')
+        writer.writeln(f'mov [rax+{struct_index}], rdx', f'Move target value into {self.member.item_name} at position {struct_index}')
+        writer.writeln(f'mov [rbp+{struct.index}], rax', f'Move {struct_type.name} back onto stack')
 
 reset_parser()

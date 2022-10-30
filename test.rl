@@ -8,13 +8,13 @@ struct Person {
     age: int;
 
     fn ageafter(years: int) -> int {
-        return this.age;
+        return this.age + years;
     }
 }
 
 fn main() -> int {
-    var to_add: int = 2;
-    var jeff: Person = 0;
+    var to_add: int = 5;
+    var jeff: Person = malloc(24);
 
     jeff.name = "Jeff\n";
     jeff.age = 10;
