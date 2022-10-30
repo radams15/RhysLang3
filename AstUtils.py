@@ -20,6 +20,12 @@ def unicode_deescape(inp):
 def next_power_of_2(x):
     return 2 if x <= 2 else 2**(x - 1).bit_length()
 
+def method_hash(struct_name, method_name):
+    return f'{struct_name}___{method_name}'
+
+def method_unhash(hashed_name):
+    return hashed_name.split('___')
+
 class LabelGenerator:
     def __init__(self, start=0):
         self.counter = start

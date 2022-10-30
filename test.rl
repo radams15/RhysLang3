@@ -19,7 +19,7 @@ fn main() -> int {
     jeff.name = "Jeff\n";
     jeff.age = 10;
 
-    writei(Person____ageafter(jeff, to_add));
+    writei(jeff.ageafter(to_add));
 
     /*var fd: int = fopen(file_name, 'w');
 

@@ -278,10 +278,10 @@ def term(p):
         left, op, right = p[:3]
         return Binary.choose(op, left, right)
 
-@pg.production('factor : PAREN_OPEN expr PAREN_CLOSE | unary_op factor | syscall | function_call | primitive | name')
+@pg.production('factor : PAREN_OPEN expr PAREN_CLOSE | unary_op factor | syscall | function_call | method_call | primitive | name')
 def factor(p):
     if len(p) == 1: # Const, var name or function call
-        if isinstance(p[0], FunctionCall) or isinstance(p[0], Syscall) or isinstance(p[0], StructGet):
+        if isinstance(p[0], FunctionCall) or isinstance(p[0], StructMethodCall) or isinstance(p[0], Syscall) or isinstance(p[0], StructGet):
             return p[0]
         else:
             if p[0].name in ('INT', 'FLOAT'):
@@ -307,6 +307,10 @@ def function_call(p):
         return FunctionCall(p[0], [])
     elif len(p) == 4:
         return FunctionCall(p[0], p[2])
+
+@pg.production('method_call : IDENTIFIER DOT function_call')
+def method_call(p):
+    return StructMethodCall(p[0], p[2])
 
 @pg.production('syscall : SYSCALL IDENTIFIER PAREN_OPEN PAREN_CLOSE')
 @pg.production('syscall : SYSCALL IDENTIFIER PAREN_OPEN args_list PAREN_CLOSE')

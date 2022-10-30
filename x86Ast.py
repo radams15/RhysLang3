@@ -145,7 +145,7 @@ class StructDef(BaseBox):
 
     def visit(self, writer):
         for m in self.methods:
-            m.name = self.name + '____' + m.name
+            m.name = method_hash(self.name, m.name)
             m.arity += 1
             m.args = [('this', self.name)] + m.args
 
@@ -478,10 +478,10 @@ class Division(Binary):
 
 class Variable(Expression):
     def __init__(self, name):
-        self.name = name
+        self.name = name.value
 
     def visit(self, writer):
-        obj = scope.get(self.name.value)
+        obj = scope.get(self.name)
 
         if type(obj) == StackLocation:
             writer.writeln(f'mov rax, [rbp+{obj.index}]')
@@ -680,7 +680,7 @@ class Syscall(Statement):
 
 class FunctionCall(Statement):
     def __init__(self, name, args):
-        self.name = name
+        self.name = name.value
 
         if type(args) == list:
             self.args = args
@@ -689,8 +689,8 @@ class FunctionCall(Statement):
 
     def visit(self, writer):
         global undefined_functions
-        if self.name.value not in defined_functions:
-            undefined_functions.append(self.name.value)
+        if self.name not in defined_functions:
+            undefined_functions.append(self.name)
 
         for arg in self.args:
             arg.visit(writer)
@@ -699,7 +699,7 @@ class FunctionCall(Statement):
         for register in reversed(ARG_REGISTERS[:len(self.args)]):
             writer.writeln('pop {}'.format(register), 'Pop arg from stack to put in function call register.')
 
-        writer.writeln('call {}'.format(self.name.value))
+        writer.writeln('call {}'.format(self.name))
 
 class StructGet(Expression):
     def __init__(self, struct_name, item_name):
@@ -741,5 +741,31 @@ class StructSet(Expression):
         writer.writeln(f'mov rax, [rbp+{struct.index}]', f'Move {struct_type.name} from stack into rax')
         writer.writeln(f'mov [rax+{struct_index}], rdx', f'Move target value into {self.member.item_name} at position {struct_index}')
         writer.writeln(f'mov [rbp+{struct.index}], rax', f'Move {struct_type.name} back onto stack')
+
+class StructMethodCall(Expression):
+    def __init__(self, member, function):
+        self.member = member.value
+        self.function: FunctionCall = function
+
+    def visit(self, writer):
+        global scope
+
+        struct = scope.get(self.member)
+
+        struct_type: StructDef = defined_structs[struct.type]
+
+        method_fullname = method_hash(struct_type.name, self.function.name)
+
+        self.function.name = method_fullname
+        self.function.args = [
+                                 Variable(
+                                     Token(
+                                        'VARIABLE',
+                                         self.member
+                                     )
+                                 )
+                             ] + self.function.args
+
+        self.function.visit(writer)
 
 reset_parser()
