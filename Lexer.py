@@ -63,7 +63,7 @@ lg.add('CHAR', r'\'\w\'')
 lg.add('IDENTIFIER', r'[a-zA-Z][a-zA-Z0-9_]*')
 
 lg.ignore(r'\s+')
-#lg.ignore(r'^\s*\/\/[\s\S]*$')
+lg.ignore(r'\/\/.*\n')
 lg.ignore(r'\/\*[\s\S]*?\*\/')
 
 lexer = lg.build()

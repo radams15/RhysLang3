@@ -19,13 +19,21 @@ fn main() -> int {
     jeff.name = "Jeff\n";
     jeff.age = 10;
 
-    writei(10);
+    var time: int;
+
+    for(var i: int=0 ; i<5 ; i = i+1) {
+        time = time();
+        writei(time); // Print the time to console
+    }
 
     var file: File = fopen(file_name, 'w');
 
     file.write(jeff.name);
 
     file.close();
+
+    free(jeff);
+    free(file);
 
     return 1;
 }

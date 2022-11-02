@@ -18,6 +18,8 @@ SYSCALL_TABLE = {
     'close': 3,
 
     'exit': 60,
+
+    'gettimeofday': 96,
 }
 
 
