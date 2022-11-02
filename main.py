@@ -97,7 +97,7 @@ if __name__ == '__main__':
     with open(out_file, 'w') as f:
         writer = Writer(f)
 
-        program.visit(writer, args.nostdlib)
+        program.visit(writer, args.noextensions)
 
     if args.dump:
         print('\n')
