@@ -51,19 +51,20 @@ if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser()
 
     arg_parser.add_argument('file', type=str, help='File to compile')
-    arg_parser.add_argument('-f', '--freestanding', action='store_true', help='Compile without standard library or extensions')
+    arg_parser.add_argument('-e', '--noextensions', action='store_true', help='Compile without extensions')
+    arg_parser.add_argument('-s', '--nostdlib', action='store_true', help='Compile without standard library')
     arg_parser.add_argument('-g', '--debug', action='store_true', help='Compile with DWARF support')
     arg_parser.add_argument('-d', '--dump', action='store_true', help='Dump assembly source to stdout.')
     arg_parser.add_argument('-o', '--output', type=str, default='a.out', help='File to write final output to.')
 
     args = arg_parser.parse_args()
 
-    if not args.freestanding:
+    if not args.noextensions:
         linked_libs = ' '.join(["-l"+x for x in LINK_LIBS])
     else:
         linked_libs = ''
 
-    if not args.freestanding:
+    if not args.nostdlib:
         libs = compile_libs()
     else:
         libs = {}
@@ -94,7 +95,7 @@ if __name__ == '__main__':
     with open(out_file, 'w') as f:
         writer = Writer(f)
 
-        program.visit(writer, args.freestanding)
+        program.visit(writer, args.nostdlib)
 
     if args.dump:
         print('\n')
@@ -108,7 +109,7 @@ if __name__ == '__main__':
         debug_args = ''
 
 
-    if not args.freestanding:
+    if not args.nostdlib:
         ### Assemble stdlib
 
         all_asm = '\n\n'.join([asm for name, asm in libs.items()])
@@ -122,7 +123,10 @@ if __name__ == '__main__':
         cmd = f'nasm -felf64 {debug_args} {asm_file} -o {librl_object}'
         print(cmd)
         os.system(cmd)
+    else:
+        librl_object = ''
 
+    if not args.noextensions:
         ### Compile extensions
 
         ext_objects = []
@@ -137,7 +141,6 @@ if __name__ == '__main__':
             ext_objects.append(obj_path)
     else:
         ext_objects = []
-        librl_object = ''
 
     ### Assemble source file
 
@@ -149,10 +152,10 @@ if __name__ == '__main__':
 
     ### Link source files
 
-    if args.freestanding:
-        ld = 'ld'
-    else:
+    if not args.noextensions:
         ld = 'gcc'
+    else:
+        ld = 'ld'
 
     cmd = '{} {} {} {} -o {}'.format(ld, ' '.join(ext_objects), librl_object, source_object, args.output)
     print(cmd)
