@@ -106,7 +106,7 @@ if __name__ == '__main__':
             print(f.read())
 
     if args.debug:
-        debug_args = '-g -F dwarf'
+        debug_args = '-g -F stabs'
     else:
         debug_args = ''
 
@@ -162,8 +162,3 @@ if __name__ == '__main__':
     cmd = '{} {} {} {} -o {}'.format(ld, ' '.join(ext_objects), librl_object, source_object, args.output)
     print(cmd)
     os.system(cmd)
-
-    #cmd = 'nasm -felf64 {} {} -o out.o && gcc {} out.o {} -o out'.format(debug_args, out_file, linked_libs, ext_files)
-
-    #print(cmd)
-    #os.system(cmd)

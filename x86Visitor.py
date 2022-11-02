@@ -58,6 +58,7 @@ def write_debug(writer, token):
 class x86Visitor(Visitor):
     ARG_REGISTERS = ['rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9']
     defined_structs = dict()
+    label_generator = LabelGenerator()
 
     def __init__(self, writer, write_start):
         super().__init__(writer, write_start)
@@ -65,7 +66,6 @@ class x86Visitor(Visitor):
         self.undefined_functions = []
         self.defined_functions = []
         self.globals_gen = x86_64GlobalGenerator()
-        self.label_generator = LabelGenerator()
         self.scope = Scope()
 
     def sizeof(self, subj):
@@ -142,8 +142,6 @@ class x86Visitor(Visitor):
         if not func.block:
             self.undefined_functions.append(func.name)
             return
-
-        print(f'Define {func.name}')
 
         self.defined_functions.append(func.name)
 

@@ -166,7 +166,7 @@ class BitwiseXor(Binary):
 
 class BitwiseOr(Binary):
     def visit(self, visitor):
-        visitor.visit_or(self)
+        visitor.visit_bitwise_or(self)
 
 class Or(Binary):
     def visit(self, visitor):
