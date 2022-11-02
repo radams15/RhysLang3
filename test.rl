@@ -19,6 +19,7 @@ fn main() -> int {
     jeff.name = "Jeff\n";
     jeff.age = 10;
 
+    writei(10);
 
     var file: File = fopen(file_name, 'w');
 

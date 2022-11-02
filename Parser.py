@@ -3,7 +3,7 @@ import warnings
 from rply import ParserGenerator
 from Lexer import lg
 
-from x86Ast import *
+from Ast import *
 
 warnings.filterwarnings("ignore") # Disable warnings
 

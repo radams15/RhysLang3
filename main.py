@@ -7,7 +7,8 @@ from glob import glob
 import argparse
 
 from Lexer import lexer
-from Parser import parser, reset_parser
+from Parser import parser
+from x86Visitor import x86Visitor
 from Writer import Writer
 
 LIB_DIR = 'lib'
@@ -31,8 +32,9 @@ def compile_lib(name):
 
     with io.StringIO() as stream:
         writer = Writer(stream)
+        visitor = x86Visitor(writer, False)
 
-        program.visit(writer, False)
+        program.visit(visitor)
 
         asm = stream.getvalue()
 
@@ -40,8 +42,6 @@ def compile_lib(name):
 
 
 def compile_libs():
-    reset_parser()
-
     libs = {
         x : compile_lib(x)
         for x in LIBS
@@ -89,15 +89,15 @@ if __name__ == '__main__':
 
     tokens = lexer.lex(data)
 
-    reset_parser()
     program = parser.parse(tokens)
 
     out_file = f'{build_dir}/out.nasm'
 
     with open(out_file, 'w') as f:
         writer = Writer(f)
+        visitor = x86Visitor(writer, args.noextensions)
 
-        program.visit(writer, args.noextensions)
+        program.visit(visitor)
 
     if args.dump:
         print('\n')
