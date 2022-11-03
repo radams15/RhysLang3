@@ -21,10 +21,12 @@ class Program(BaseBox):
         return out
 
 class StructDef(BaseBox):
-    def __init__(self, name, memebers, methods):
+    def __init__(self, name, members, methods):
         self.name = name.value
-        self.members = [(memebers[x].value , memebers[x + 1].value) for x in range(0, len(memebers), 2)]
-        self.methods: list[Function] = methods
+        self.members = [(members[x].value , members[x + 1].value) for x in range(0, len(members), 2)]
+
+        self.methods: list[Function] = [x for x in methods if not x.static]
+        self.static_methods: list[Function] = [x for x in methods if x.static]
 
         self.indexes = dict()
 
@@ -32,20 +34,21 @@ class StructDef(BaseBox):
         visitor.visit_struct_def(self)
 
 class Function(BaseBox):
-    def __init__(self, name, return_val, args, block=None):
+    def __init__(self, name, return_val, args, block=None, static=False):
         self.name = name.value
         self.return_val = return_val
         self.args = [(args[x].value, args[x+1].value) for x in range(0, len(args), 2)]
         self.arity = len(args)
         self.block = block
+        self.static = static
 
     def visit(self, visitor):
         visitor.visit_function(self)
 
     def __repr__(self):
-        return '''Function {} ({}){
+        return '''Function {} ({}){{
     {}
-    }'''.format(self.name.value, "\n\t".join([x[0] + ": " + x[1] for x in self.args]), str(self.block))
+    }}'''.format(self.name, "\n\t".join([x[0] + ": " + x[1] for x in self.args]), str(self.block))
 
 class Statement(BaseBox):
     pass

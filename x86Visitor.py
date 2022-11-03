@@ -113,7 +113,7 @@ class x86Visitor(Visitor):
         for toplevel in program.toplevels:
             toplevel.visit(self)
 
-        for undefined_function in self.undefined_functions:
+        for undefined_function in set(self.undefined_functions):
             self.writer.writeln('extern {}'.format(undefined_function))
 
         if self.write_start:
@@ -137,6 +137,11 @@ class x86Visitor(Visitor):
             m.name = method_hash(struct.name, m.name)
             m.arity += 1
             m.args = [('this', struct.name)] + m.args
+
+            m.visit(self)
+
+        for m in struct.static_methods:
+            m.name = method_hash(struct.name, m.name)
 
             m.visit(self)
 
@@ -492,23 +497,31 @@ class x86Visitor(Visitor):
         self.writer.writeln(f'mov [rbp+{struct.index}], rax', f'Move {struct_type.name} back onto stack')
 
     def visit_struct_method_call(self, struct_method_call: StructMethodCall):
-        struct = self.scope.get(struct_method_call.member)
+        if struct_method_call.member in self.defined_structs:
+            struct_type = struct_method_call.member
 
-        struct_type: StructDef = self.defined_structs[struct.type]
+            method_fullname = method_hash(struct_type, struct_method_call.function.name)
 
-        method_fullname = method_hash(struct_type.name, struct_method_call.function.name)
+        else:
+            struct = self.scope.get(struct_method_call.member)
+
+            struct_type: StructDef = self.defined_structs[struct.type]
+
+            method_fullname = method_hash(struct_type.name, struct_method_call.function.name)
+
+            struct_method_call.function.args = [
+                                     Variable(
+                                         Token(
+                                             'VARIABLE',
+                                             struct_method_call.member
+                                         )
+                                     )
+                                 ] + struct_method_call.function.args
+
+
+        struct_method_call.function.name = method_fullname
 
         if method_fullname not in self.defined_functions:
             self.undefined_functions.append(method_fullname)
-
-        struct_method_call.function.name = method_fullname
-        struct_method_call.function.args = [
-                                 Variable(
-                                     Token(
-                                         'VARIABLE',
-                                         struct_method_call.member
-                                     )
-                                 )
-                             ] + struct_method_call.function.args
 
         struct_method_call.function.visit(self)

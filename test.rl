@@ -7,6 +7,14 @@ struct Person {
     name: str;
     age: int;
 
+    static fn new(name: str, age: int) -> Person {
+        var this: Person = alloc Person;
+        this.name = name;
+        this.age = age;
+
+        return this;
+    }
+
     fn ageafter(years: int) -> int {
         return this.age + years;
     }
@@ -14,10 +22,7 @@ struct Person {
 
 fn main() -> int {
     var to_add: int = 5;
-    var jeff: Person = alloc Person;
-
-    jeff.name = "Jeff\n";
-    jeff.age = 10;
+    var jeff: Person = Person.new("Jeff", 10);
 
     var time: int;
     for(var i: int=0 ; i<5 ; i += 1) {
@@ -25,9 +30,12 @@ fn main() -> int {
         writei(time); // Print the time to console
     }
 
-    var file: File = fopen(file_name, 'w');
+    var file: File = File.open(file_name, 'w');
+
+    writei(jeff.age);
 
     file.write(jeff.name);
+    file.write("\n");
 
     file.close();
 

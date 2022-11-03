@@ -53,13 +53,25 @@ def global_var(p):
     else:
         return Global(p[1], p[3], p[5])
 
-@pg.production('function_def : FN IDENTIFIER PAREN_OPEN PAREN_CLOSE SINGLE_ARROW type block | ')
+@pg.production('function_def : FN IDENTIFIER PAREN_OPEN PAREN_CLOSE SINGLE_ARROW type block')
+@pg.production('function_def : STATIC FN IDENTIFIER PAREN_OPEN PAREN_CLOSE SINGLE_ARROW type block')
 @pg.production('function_def : FN IDENTIFIER PAREN_OPEN param_list PAREN_CLOSE SINGLE_ARROW type block')
+@pg.production('function_def : STATIC FN IDENTIFIER PAREN_OPEN param_list PAREN_CLOSE SINGLE_ARROW type block')
 def function_def(p):
     if len(p) == 8:
-        return Function(p[1], p[6], p[3], p[7])
-    else:
+        if p[0].name == 'STATIC': # Static without args
+            return Function(p[2], p[7], [], p[6], True)
+        else: # Non-static with args
+            return Function(p[1], p[6], p[3], p[7])
+
+    elif len(p) == 9: # Static with args
+        return Function(p[2], p[7], p[4], p[8], True)
+
+    elif len(p) == 7: # Non-static without args
         return Function(p[1], p[5], [], p[6])
+
+    else:
+        raise Exception("Function definition not understood!")
 
 @pg.production('struct_def : STRUCT IDENTIFIER BRACE_OPEN struct_members BRACE_CLOSE')
 def struct_def(p):
@@ -68,7 +80,7 @@ def struct_def(p):
 
     return StructDef(p[1], members, methods)
 
-@pg.production('struct_members : param SEMICOLON | struct_members function_def | struct_members function_decl | struct_members param SEMICOLON')
+@pg.production('struct_members : param SEMICOLON | struct_members function_def | struct_members param SEMICOLON')
 def struct_members(p):
     if len(p) == 2 and p[1].name == 'SEMICOLON':
         return p[0]
