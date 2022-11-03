@@ -379,9 +379,9 @@ class x86Visitor(Visitor):
     def visit_assignment(self, assign: Assignment):
         assign.expr.visit(self)
 
-        offset = self.scope.get(assign.name.value).index
+        offset = self.scope.get(assign.name).index
 
-        self.writer.writeln(f'mov [rbp+{offset}], rax', 'Assign {} to rax'.format(assign.name.value))
+        self.writer.writeln(f'mov [rbp+{offset}], rax', 'Assign {} to rax'.format(assign.name))
 
 
     def visit_if(self, stmt: If):
@@ -491,24 +491,24 @@ class x86Visitor(Visitor):
                        f'Move target value into {struct_set.member.item_name} at position {struct_index}')
         self.writer.writeln(f'mov [rbp+{struct.index}], rax', f'Move {struct_type.name} back onto stack')
 
-    def visit_struct_method_call(self, struct_method_cal: StructMethodCall):
-        struct = self.scope.get(struct_method_cal.member)
+    def visit_struct_method_call(self, struct_method_call: StructMethodCall):
+        struct = self.scope.get(struct_method_call.member)
 
         struct_type: StructDef = self.defined_structs[struct.type]
 
-        method_fullname = method_hash(struct_type.name, struct_method_cal.function.name)
+        method_fullname = method_hash(struct_type.name, struct_method_call.function.name)
 
         if method_fullname not in self.defined_functions:
             self.undefined_functions.append(method_fullname)
 
-        struct_method_cal.function.name = method_fullname
-        struct_method_cal.function.args = [
+        struct_method_call.function.name = method_fullname
+        struct_method_call.function.args = [
                                  Variable(
                                      Token(
                                          'VARIABLE',
-                                         struct_method_cal.member
+                                         struct_method_call.member
                                      )
                                  )
-                             ] + struct_method_cal.function.args
+                             ] + struct_method_call.function.args
 
-        struct_method_cal.function.visit(self)
+        struct_method_call.function.visit(self)

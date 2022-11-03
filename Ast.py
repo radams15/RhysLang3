@@ -106,17 +106,29 @@ class Binary(Expression):
         if operator.name == 'MINUS':
             return Subtraction(operator, left, right)
 
+        elif operator.name == 'MINUS_EQUAL':
+            return Assignment(left.name, Subtraction(operator, left, right))
+
         elif operator.name == 'PLUS':
             return Addition(operator, left, right)
 
+        elif operator.name == 'PLUS_EQUAL':
+            return Assignment(left.name, Addition(operator, left, right))
+
         elif operator.name == 'MULTIPLY':
             return Multiplication(operator, left, right)
+
+        elif operator.name == 'MULTIPLY_EQUAL':
+            return Assignment(left.name, Multiplication(operator, left, right))
 
         elif operator.name == 'EXPONENT':
             return Exponent(operator, left, right)
 
         elif operator.name == 'DIVIDE':
             return Division(operator, left, right)
+
+        elif operator.name == 'DIVIDE_EQUAL':
+            return Assignment(left.name, Division(operator, left, right))
 
         elif operator.name == 'OR':
             return Or(operator, left, right)
@@ -145,11 +157,20 @@ class Binary(Expression):
         elif operator.name == 'PIPE':
             return BitwiseOr(operator, left, right)
 
-        elif operator.name == 'XOR':
+        elif operator.name == 'PIPE_EQUAL':
+            return Assignment(left.name, BitwiseOr(operator, left, right))
+
+        elif operator.name == 'AMPERSAND':
             return BitwiseAnd(operator, left, right)
+
+        elif operator.name == 'AMPERSAND_EQUAL':
+            return Assignment(left.name, BitwiseAnd(operator, left, right))
 
         elif operator.name == 'XOR':
             return BitwiseXor(operator, left, right)
+
+        elif operator.name == 'XOR_EQUAL':
+            return Assignment(left.name, BitwiseXor(operator, left, right))
 
         else:
             raise Exception(f'Invalid binary operator: {operator}')
@@ -265,7 +286,11 @@ class Declaration(Expression):
 
 class Assignment(Expression):
     def __init__(self, name, expr):
-        self.name = name
+        if type(name) == str:
+            self.name = name
+        else:
+            self.name = name.value
+
         self.expr = expr
 
     def visit(self, visitor):

@@ -20,8 +20,7 @@ fn main() -> int {
     jeff.age = 10;
 
     var time: int;
-
-    for(var i: int=0 ; i<5 ; i = i+1) {
+    for(var i: int=0 ; i<5 ; i += 1) {
         time = time();
         writei(time); // Print the time to console
     }

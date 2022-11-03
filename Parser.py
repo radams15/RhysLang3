@@ -340,11 +340,11 @@ def alloc(p):
 def unary_op(p):
     return p[0]
 
-@pg.production('binary_op_1 : PLUS | MINUS')
+@pg.production('binary_op_1 : PLUS | MINUS | PLUS_EQUAL | MINUS_EQUAL')
 def binary_op_1(p):
     return p[0]
 
-@pg.production('binary_op_2 : MULTIPLY | DIVIDE | EXPONENT | XOR | PIPE | AMPERSAND')
+@pg.production('binary_op_2 : MULTIPLY | DIVIDE | EXPONENT | XOR | PIPE | AMPERSAND | MULTIPLY_EQUAL | DIVIDE_EQUAL | XOR_EQUAL | PIPE_EQUAL | AMPERSAND_EQUAL')
 def binary_op_2(p):
     return p[0]
 
