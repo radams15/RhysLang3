@@ -58,7 +58,8 @@ def write_debug(writer, token):
 
 
 class x86Visitor(Visitor):
-    ARG_REGISTERS = ['rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9']
+    ARG_REGISTERS = ('rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9')
+    PRIMITIVES = ('int', 'char', 'str', 'ptr')
     defined_structs = dict()
     label_generator = LabelGenerator()
 
@@ -71,7 +72,7 @@ class x86Visitor(Visitor):
         self.scope = Scope()
 
     def sizeof(self, subj):
-        if subj in ('int', 'char', 'str'):
+        if subj in self.PRIMITIVES:
             return 8
 
         if type(subj) == StructDef:
@@ -150,7 +151,7 @@ class x86Visitor(Visitor):
             self.undefined_functions.append(func.name)
             return
 
-        self.defined_functions.append(func.name)
+        self.defined_functions.append(func)
 
         self.writer.writeln(f'global {func.name}')
         write_debug(self.writer, func.name)
@@ -292,6 +293,19 @@ class x86Visitor(Visitor):
         self.writer.writeln('cmp rcx, rax')
         self.writer.writeln('mov rax, 0')
         self.writer.writeln('setl al')
+
+    def get_resultant_type(self, expr):
+        expr_type = type(expr)
+
+        if expr_type == Constant:
+            return type(expr.value)
+        elif expr_type == Variable:
+            pos = self.scope.get(expr.name)
+            return pos.type
+        elif expr_type == FunctionCall:
+            func = [x for x in self.defined_functions if x.name == expr.name][0]
+            return func.return_val
+
 
     def visit_addition(self, binary: Addition):
         binary.left.visit(self)
@@ -455,11 +469,17 @@ class x86Visitor(Visitor):
 
     def visit_function_call(self, func_call: FunctionCall):
         if func_call.name == 'sizeof':
-            obj_type = self.scope.get(func_call.args[0].name).value
+            if func_call.args[0].name in self.PRIMITIVES:
+                obj_type = func_call.args[0].name
+                obj_name = obj_type
+            else:
+                obj_type = self.scope.get(func_call.args[0].name).value
+                obj_name = obj_type.name
+
             size = self.sizeof(obj_type)
-            self.writer.writeln(f'mov rax, {size}', f'{obj_type.name} size is {size}')
+            self.writer.writeln(f'mov rax, {size}', f'{obj_name} size is {size}')
         else:
-            if func_call.name not in self.defined_functions:
+            if func_call.name not in [x.name for x in self.defined_functions]:
                 self.undefined_functions.append(func_call.name)
 
             for arg in func_call.args:
@@ -501,7 +521,6 @@ class x86Visitor(Visitor):
             struct_type = struct_method_call.member
 
             method_fullname = method_hash(struct_type, struct_method_call.function.name)
-
         else:
             struct = self.scope.get(struct_method_call.member)
 
@@ -521,7 +540,7 @@ class x86Visitor(Visitor):
 
         struct_method_call.function.name = method_fullname
 
-        if method_fullname not in self.defined_functions:
+        if method_fullname not in [x.name for x in self.defined_functions]:
             self.undefined_functions.append(method_fullname)
 
         struct_method_call.function.visit(self)

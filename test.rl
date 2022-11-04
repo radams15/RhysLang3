@@ -27,6 +27,13 @@ fn main() -> int {
     writei(name.length());
     writei(name.at(0));
 
+    var names: List = List.new();
+    names.append("Peter");
+    names.append("Paul");
+    puts(names.at(1));
+    puts(names.at(0));
+    puts(names.at(3));
+
     /*var to_add: int = 5;
     var jeff: Person = Person.new("Jeff", 10);
 

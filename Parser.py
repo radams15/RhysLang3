@@ -60,7 +60,7 @@ def global_var(p):
 def function_def(p):
     if len(p) == 8:
         if p[0].name == 'STATIC': # Static without args
-            return Function(p[2], p[7], [], p[6], True)
+            return Function(p[2], p[6], [], p[7], True)
         else: # Non-static with args
             return Function(p[1], p[6], p[3], p[7])
 
