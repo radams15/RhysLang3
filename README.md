@@ -4,7 +4,7 @@
 
 ---
 
-This is a simple language composed of functions and variables.
+This is a simple language composed of functions, variables and classes.
 
 Currently compiles to linux x86_64 assembly and has a small standard
 library using linux syscalls and c extensions.

@@ -122,7 +122,7 @@ if __name__ == '__main__':
 
         librl_object = f'{lib_build_dir}/librl.o'
 
-        cmd = f'nasm -felf64 {debug_args} {asm_file} -o {librl_object}'
+        cmd = f'nasm -Fstabs -felf64 {debug_args} {asm_file} -o {librl_object}'
         print(cmd)
         os.system(cmd)
     else:
@@ -148,7 +148,7 @@ if __name__ == '__main__':
 
     source_object = os.path.join(build_dir, 'out.o')
 
-    cmd = 'nasm -felf64 {} {} -o {}'.format(debug_args, out_file, source_object)
+    cmd = 'nasm -Fstabs -felf64 {} {} -o {}'.format(debug_args, out_file, source_object)
     print(cmd)
     os.system(cmd)
 

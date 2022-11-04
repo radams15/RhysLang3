@@ -19,11 +19,12 @@ int writei(int i){
     return 0;
 }
 
-char* add_str(char* a, char* b){
+char* str_add(char* a, char* b){
     char* out = calloc(strlen(a)+strlen(b)+1, sizeof(char));
 
-    strcpy(out, a);
-    strcat(out, b);
+    sprintf(out, "%s%s", a, b);
+
+    printf("%s + %s = '%s'\n\n", a, b, out);
 
     return out;
 }
