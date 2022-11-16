@@ -6,7 +6,7 @@ global _start
 
 _start:
     call main
-    mov rdi, rbp
+    mov rdi, rax
     mov rax, 60
     syscall
 '''

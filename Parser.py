@@ -165,7 +165,7 @@ def block(p):
 @pg.production('statement : RETURN expr SEMICOLON |' +
                'expr SEMICOLON |' +
                'IF PAREN_OPEN expr PAREN_CLOSE block |' +
-               'IF PAREN_OPEN expr PAREN_CLOSE block ELSE statement |' +
+               'IF PAREN_OPEN expr PAREN_CLOSE block ELSE block |' +
                'FOR PAREN_OPEN expr SEMICOLON expr SEMICOLON expr PAREN_CLOSE block |' +
                'WHILE PAREN_OPEN expr PAREN_CLOSE block' +
                '')
