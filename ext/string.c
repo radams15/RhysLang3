@@ -6,7 +6,7 @@ struct String {
     char* val;
 };
 
-struct String* String___add(struct String* this, char* end){
+struct String* String___add___String$str(struct String* this, char* end){
     char* out_str = calloc(strlen(this->val)+strlen(end)+1, sizeof(char));
 
     sprintf(out_str, "%s%s", this->val, end);
@@ -17,7 +17,7 @@ struct String* String___add(struct String* this, char* end){
     return out;
 }
 
-int String___length(struct String* this) {
+int String___length___String(struct String* this) {
     int out = 0;
 
     char* inp = this->val;
@@ -30,6 +30,6 @@ int String___length(struct String* this) {
     return out;
 }
 
-char String___at(struct String* this, int i){
+char String___at___String$int(struct String* this, int i){
     return this->val[i];
 }

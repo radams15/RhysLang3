@@ -166,6 +166,7 @@ def block(p):
                'expr SEMICOLON |' +
                'IF PAREN_OPEN expr PAREN_CLOSE block |' +
                'IF PAREN_OPEN expr PAREN_CLOSE block ELSE block |' +
+               'IF PAREN_OPEN expr PAREN_CLOSE block ELSE statement |' +
                'FOR PAREN_OPEN expr SEMICOLON expr SEMICOLON expr PAREN_CLOSE block |' +
                'WHILE PAREN_OPEN expr PAREN_CLOSE block' +
                '')

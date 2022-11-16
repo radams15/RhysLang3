@@ -135,14 +135,14 @@ class x86Visitor(Visitor):
         self.scope.set(struct.name, StaticItem(struct))
 
         for m in struct.methods:
-            m.name = method_hash(struct.name, m.name)
             m.arity += 1
             m.args = [('this', struct.name)] + m.args
+            m.name = method_hash(struct.name, m.name, m.args)
 
             m.visit(self)
 
         for m in struct.static_methods:
-            m.name = method_hash(struct.name, m.name)
+            m.name = method_hash(struct.name, m.name , m.args)
 
             m.visit(self)
 
@@ -519,14 +519,21 @@ class x86Visitor(Visitor):
     def visit_struct_method_call(self, struct_method_call: StructMethodCall):
         if struct_method_call.member in self.defined_structs:
             struct_type = struct_method_call.member
+            struct_def = self.defined_structs[struct_type]
 
-            method_fullname = method_hash(struct_type, struct_method_call.function.name)
+            meth_def = struct_def.get_method(struct_method_call.function.name)
+
+            method_fullname = meth_def.name # method_hash(struct_type, struct_type.name, meth_def.args)
+
+            print(method_fullname)
         else:
             struct = self.scope.get(struct_method_call.member)
 
             struct_type: StructDef = self.defined_structs[struct.type]
 
-            method_fullname = method_hash(struct_type.name, struct_method_call.function.name)
+            meth_def = struct_type.get_method(struct_method_call.function.name)
+
+            method_fullname = method_hash(struct_type.name, struct_method_call.function.name, meth_def.args)
 
             struct_method_call.function.args = [
                                      Variable(

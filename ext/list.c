@@ -6,7 +6,7 @@ struct List {
     int length;
 };
 
-void* List___at(struct List* this, int i){
+void* List___at___List$int(struct List* this, int i){
     if(i > this->length-1){
         // Invalid index
 
@@ -18,7 +18,7 @@ void* List___at(struct List* this, int i){
     return this->items[i];
 }
 
-void List___append(struct List* this, void* item){
+void List___append___List$ptr(struct List* this, void* item){
     this->length++;
     this->items = realloc(this->items, this->length*sizeof(int));
 

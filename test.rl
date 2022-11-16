@@ -30,9 +30,10 @@ fn main() -> int {
     var names: List = List.new();
     names.append("Peter");
     names.append("Paul");
+
     puts(names.at(1));
     puts(names.at(0));
-    puts(names.at(3));
+    puts(names.at(2));
 
     /*var to_add: int = 5;
     var jeff: Person = Person.new("Jeff", 10);

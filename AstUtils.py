@@ -20,11 +20,22 @@ def unicode_deescape(inp):
 def next_power_of_2(x):
     return 2 if x <= 2 else 2**(x - 1).bit_length()
 
-def method_hash(struct_name, method_name):
-    return f'{struct_name}___{method_name}'
+def method_hash(struct_name, method_name, args):
+    name = '{}___{}___{}'.format(struct_name, method_name, '$'.join(x[1] if type(x) in (list, tuple) else x for x in args))
+
+    print(name, args)
+
+    return name
 
 def method_unhash(hashed_name):
-    return hashed_name.split('___')
+    segments = hashed_name.split('___')
+
+    if len(segments) != 3:
+        raise Exception("Error, method name is invalid!")
+
+    segments[2] = segments[2].split("$")
+
+    return segments
 
 class LabelGenerator:
     def __init__(self, start=0):

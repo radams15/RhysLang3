@@ -33,6 +33,12 @@ class StructDef(BaseBox):
     def visit(self, visitor):
         visitor.visit_struct_def(self)
 
+    def get_method(self, name):
+        for meth in self.methods + self.static_methods:
+            st_name, meth_name, args = method_unhash(meth.name)
+            if meth_name == name:
+                return meth
+
 class Function(BaseBox):
     def __init__(self, name, return_val, args, block=None, static=False):
         self.name = name.value
