@@ -1,5 +1,5 @@
 fn puts(data: str) -> int {
-    return syscall write(1, data, strlen(data)+1);
+    return syscall write(1, cstr(data), strlen(data));
 }
 
 fn exit(code: int) -> void {

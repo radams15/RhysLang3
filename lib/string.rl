@@ -1,6 +1,7 @@
 fn strlen(string: str) -> int;
+fn cstr(string: str) -> ptr;
 
-struct String {
+/*struct String {
     val: str;
 
     static fn new(val: str) -> String {
@@ -18,4 +19,4 @@ struct String {
     fn cstr() -> str {
         return this.val;
     }
-}
+}*/

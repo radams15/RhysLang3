@@ -15,7 +15,11 @@ LIB_DIR = 'lib'
 EXT_DIR = 'ext'
 FILE_EXT = '.rl'
 
+ARCH = 'x86_64'
+
 LIBS = [x.replace(LIB_DIR+os.sep, '').replace(FILE_EXT, '') for x in glob(f'{LIB_DIR}/*{FILE_EXT}')]
+NASM_LIBS = [x.replace(LIB_DIR+os.sep, '').replace('.nasm', '') for x in glob(f'{LIB_DIR}/{ARCH}_*.nasm')]
+
 EXT_FILES = list(glob(f'{EXT_DIR}/*.c'))
 
 LINK_LIBS = [
@@ -23,6 +27,7 @@ LINK_LIBS = [
 ]
 
 def compile_lib(name):
+    print(f'Compiling: {name}')
     path = os.path.join(LIB_DIR, name) + FILE_EXT
 
     with open(path, 'r') as f:
@@ -40,12 +45,23 @@ def compile_lib(name):
 
     return asm
 
+def compile_nasm_lib(name):
+    print(f'Compiling: {name}')
+    path = os.path.join(LIB_DIR, name) + '.nasm'
+
+    with open(path, 'r') as f:
+        return f.read()
 
 def compile_libs():
     libs = {
         x : compile_lib(x)
         for x in LIBS
     }
+
+    libs.update({
+        x : compile_nasm_lib(x)
+        for x in NASM_LIBS
+    })
 
     return libs
 

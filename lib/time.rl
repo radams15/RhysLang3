@@ -4,6 +4,7 @@ struct TimeVal{
     usec: int;
 }
 
+/*
 fn timeofday() -> TimeVal {
     var out: TimeVal = alloc TimeVal;
 
@@ -20,3 +21,4 @@ fn time() -> int {
 
     return out;
 }
+*/

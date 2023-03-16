@@ -11,7 +11,7 @@ struct File {
         return syscall close(this.fd);
     }
 
-    static fn open(name: str, mode: char) -> File {
+    /*static fn open(name: str, mode: char) -> File {
         var modecode: int = 100;
         if(mode == 'r'){
             modecode |= 0;
@@ -26,5 +26,5 @@ struct File {
         out.fd = fd;
 
         return out;
-    }
+    }*/
 }

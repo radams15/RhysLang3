@@ -364,10 +364,10 @@ class x86Visitor(Visitor):
 
     def visit_global(self, globl: Global):
         value = globl.value.value
-
         if globl.type.value == 'str':
+            str_len = len(re.sub(r'\\(\w)', '\1', value[1:-1]))
             value = unicode_deescape(value[1:-1])
-            value = value + [0]
+            value = [str_len, *value]
         else:
             value = [value]
 
@@ -375,7 +375,7 @@ class x86Visitor(Visitor):
         self.scope.set(globl.name.value, GlobalLocation(globl.name.value, globl.type))
 
     def visit_string(self, string: String):
-        string.id = self.globals_gen.make('dw', *string.data, 0, type='string')
+        string.id = self.globals_gen.make('dw', len(string.data), *string.data, type='string')
 
         self.writer.writeln(f'mov rax, {string.id}')
 
