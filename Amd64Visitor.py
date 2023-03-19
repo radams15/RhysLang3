@@ -23,7 +23,7 @@ SYSCALL_TABLE = {
 }
 
 
-class x86_64GlobalGenerator(GlobalGenerator):
+class Amd64GlobalGenerator(GlobalGenerator):
     def make(self, size, *data, type='global', name=None):
         if not name:
             name = self._get_name(type)
@@ -57,7 +57,7 @@ def write_debug(writer, token):
 
 
 
-class x86Visitor(Visitor):
+class Amd64Visitor(Visitor):
     ARG_REGISTERS = ('rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9')
     PRIMITIVES = ('int', 'char', 'str', 'ptr')
     defined_structs = dict()
@@ -68,7 +68,7 @@ class x86Visitor(Visitor):
 
         self.undefined_functions = []
         self.defined_functions = []
-        self.globals_gen = x86_64GlobalGenerator()
+        self.globals_gen = Amd64GlobalGenerator()
         self.scope = Scope()
 
     def sizeof(self, subj):
@@ -95,7 +95,7 @@ class x86Visitor(Visitor):
     def reset_parser(self):
         self.undefined_functions = []
         self.defined_functions = []
-        self.globals_gen = x86_64GlobalGenerator()
+        self.globals_gen = Amd64GlobalGenerator()
         self.label_generator = LabelGenerator()
         self.scope = Scope()
 

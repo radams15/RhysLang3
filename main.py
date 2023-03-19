@@ -8,14 +8,35 @@ import argparse
 
 from Lexer import lexer
 from Parser import parser
-from x86Visitor import x86Visitor
+from i086Visitor import i086Visitor
+from i386Visitor import i386Visitor
+from Amd64Visitor import Amd64Visitor
 from Writer import Writer
 
 LIB_DIR = 'lib'
 EXT_DIR = 'ext'
 FILE_EXT = '.rl'
 
-ARCH = 'x86_64'
+ARCH = 'i086'
+
+if ARCH == 'amd64':
+    CC = 'gcc'
+    LD = 'ld'
+    AS = 'nasm -felf64'
+    VISITOR = Amd64Visitor
+elif ARCH == 'i386':
+    CC = 'gcc -melf_i386'
+    LD = 'ld -melf_i386'
+    AS = 'nasm -felf32'
+    VISITOR = i386Visitor
+elif ARCH == 'i086':
+    CC = 'bcc'
+    LD = 'ld86'
+    AS = 'nasm -fas86'
+    VISITOR = i086Visitor
+else:
+    print(f'Unknown arch: {ARCH}')
+    exit(1)
 
 LIBS = [x.replace(LIB_DIR+os.sep, '').replace(FILE_EXT, '') for x in glob(f'{LIB_DIR}/*{FILE_EXT}')]
 NASM_LIBS = [x.replace(LIB_DIR+os.sep, '').replace('.nasm', '') for x in glob(f'{LIB_DIR}/{ARCH}_*.nasm')]
@@ -37,7 +58,7 @@ def compile_lib(name):
 
     with io.StringIO() as stream:
         writer = Writer(stream)
-        visitor = x86Visitor(writer, False)
+        visitor = VISITOR(writer, False)
 
         program.visit(visitor)
 
@@ -111,7 +132,7 @@ if __name__ == '__main__':
 
     with open(out_file, 'w') as f:
         writer = Writer(f)
-        visitor = x86Visitor(writer, args.noextensions)
+        visitor = VISITOR(writer, args.noextensions)
 
         program.visit(visitor)
 
@@ -122,7 +143,7 @@ if __name__ == '__main__':
             print(f.read())
 
     if args.debug:
-        debug_args = '-g -F stabs'
+        debug_args = '-g'
     else:
         debug_args = ''
 
@@ -138,7 +159,7 @@ if __name__ == '__main__':
 
         librl_object = f'{lib_build_dir}/librl.o'
 
-        cmd = f'nasm -Fstabs -felf64 {debug_args} {asm_file} -o {librl_object}'
+        cmd = f'{AS} {debug_args} {asm_file} -o {librl_object}'
         print(cmd)
         os.system(cmd)
     else:
@@ -152,7 +173,7 @@ if __name__ == '__main__':
             obj_file = os.path.basename(ext_file).replace('.c', '.o')
             obj_path = os.path.join(ext_build_dir, obj_file)
 
-            cmd = f'gcc -c {ext_file} -o {obj_path}'
+            cmd = f'{CC} -c {ext_file} -o {obj_path}'
             print(cmd)
             os.system(cmd)
 
@@ -164,17 +185,17 @@ if __name__ == '__main__':
 
     source_object = os.path.join(build_dir, 'out.o')
 
-    cmd = 'nasm -Fstabs -felf64 {} {} -o {}'.format(debug_args, out_file, source_object)
+    cmd = '{} {} {} -o {}'.format(AS, debug_args, out_file, source_object)
     print(cmd)
     os.system(cmd)
 
     ### Link source files
 
     if not args.noextensions:
-        ld = 'gcc'
+        ld = CC
     else:
-        ld = 'ld'
+        ld = LD
 
-    cmd = '{} {} {} {} -o {}'.format(ld, ' '.join(ext_objects), librl_object, source_object, args.output)
+    cmd = '{} {} {} {} -o {}'.format(ld, ' '.join(ext_objects), source_object, librl_object, args.output)
     print(cmd)
     os.system(cmd)

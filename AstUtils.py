@@ -68,7 +68,7 @@ class Scope:
         self.values = dict()
         self.parent = parent
 
-        self.stack_index = -8
+        self.stack_index = -4
 
         self.index = index
 
