@@ -365,9 +365,7 @@ class Amd64Visitor(Visitor):
     def visit_global(self, globl: Global):
         value = globl.value.value
         if globl.type.value == 'str':
-            str_len = len(re.sub(r'\\(\w)', '\1', value[1:-1]))
-            value = unicode_deescape(value[1:-1])
-            value = [str_len, *value]
+            value = self._make_string_array(value)
         else:
             value = [value]
 
@@ -375,7 +373,7 @@ class Amd64Visitor(Visitor):
         self.scope.set(globl.name.value, GlobalLocation(globl.name.value, globl.type))
 
     def visit_string(self, string: String):
-        string.id = self.globals_gen.make('dw', len(string.data), *string.data, type='string')
+        string.id = self.globals_gen.make('dw', *self._make_string_array(string.data), type='string')
 
         self.writer.writeln(f'mov rax, {string.id}')
 

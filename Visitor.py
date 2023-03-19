@@ -5,6 +5,12 @@ class Visitor:
         self.writer = writer
         self.write_start = write_start
 
+    def _make_string_array(self, value):
+        print(value)
+        str_len = len(re.sub(r'\\(\w)', '\1', value[1:-1]))
+        value = unicode_deescape(value[1:-1])
+        return [str_len, *value]
+
     def sizeof(self, item): pass
 
     def visit_program(self, program: Program): pass

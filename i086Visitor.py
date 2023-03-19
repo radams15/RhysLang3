@@ -12,12 +12,11 @@ _main:
 '''
 
 SYSCALL_TABLE = {
-    'read': 3,
-    'write': 4,
-    'open': 5,
-    'close': 6,
+    'write': 9,
 
-    'exit': 1,
+    'close': -1, # Unknown
+
+    'exit': 0x4C,
 }
 
 
@@ -56,7 +55,7 @@ def write_debug(writer, token):
 
 
 class i086Visitor(Visitor):
-    ARG_REGISTERS = ('bx', 'cx', 'dx', 'si')
+    ARG_REGISTERS = ('dx', 'cx', 'bx')
     PRIMITIVES = ('int', 'char', 'str', 'ptr')
     defined_structs = dict()
     label_generator = LabelGenerator()
@@ -358,12 +357,13 @@ class i086Visitor(Visitor):
     def visit_constant(self, const: Constant):
         self.writer.writeln(f'mov ax, {const.value}')
 
+    def _make_string_array(self, value):
+        return super()._make_string_array(value) + ["'$'"]
+
     def visit_global(self, globl: Global):
         value = globl.value.value
         if globl.type.value == 'str':
-            str_len = len(re.sub(r'\\(\w)', '\1', value[1:-1]))
-            value = unicode_deescape(value[1:-1])
-            value = [str_len, *value]
+            value = self._make_string_array(value)
         else:
             value = [value]
 
@@ -371,9 +371,9 @@ class i086Visitor(Visitor):
         self.scope.set(globl.name.value, GlobalLocation(globl.name.value, globl.type))
 
     def visit_string(self, string: String):
-        string.id = self.globals_gen.make('dw', len(string.data), *string.data, type='string')
+        string.id = self.globals_gen.make('dw', *self._make_string_array(string.data), type='string')
 
-        self.writer.writeln(f'mov ax, [{string.id}]')
+        self.writer.writeln(f'mov ax, {string.id}')
 
     def visit_declaration(self, decl: Declaration):
         if decl.initialiser:
@@ -459,9 +459,10 @@ class i086Visitor(Visitor):
         for register in reversed(self.ARG_REGISTERS[:len(syscall.args)]):
             self.writer.writeln('pop {}'.format(register), 'Pop arg from stack to put in syscall register.')
 
-        self.writer.writeln('mov ax, {}'.format(id), 'Move syscall number {} into ax.'.format(id))
+        self.writer.writeln('xor ax, ax')
+        self.writer.writeln('mov ah, {}'.format(id), 'Move syscall number {} into ax.'.format(id))
 
-        self.writer.writeln('syscall')
+        self.writer.writeln('int 0x21')
 
     def visit_function_call(self, func_call: FunctionCall):
         if func_call.name == 'sizeof':

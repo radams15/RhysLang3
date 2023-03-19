@@ -276,9 +276,7 @@ class Char(Constant):
 
 class String(Expression):
     def __init__(self, data):
-        data = data.value[1:-1]
-
-        self.data = unicode_deescape(data)
+        self.data = data.value
         self.id = None
 
     def visit(self, visitor):
