@@ -2,17 +2,20 @@ from Visitor import Visitor
 from Ast import *
 
 ENTRYPOINT = '''\
-global _main
+org 0x100
+
+jmp _main
 
 _main:
     call main
-    mov dx, ax
-    mov ax, 1
-    int 0x80
+    mov cx, ax
+    mov ah, 0x4c
+    mov al, cl
+    int 0x21
 '''
 
 SYSCALL_TABLE = {
-    'write': 9,
+    'write': 0x9,
 
     'close': -1, # Unknown
 
@@ -25,7 +28,7 @@ class i086GlobalGenerator(GlobalGenerator):
         if not name:
             name = self._get_name(type)
 
-        if size not in ('db', 'dw'):
+        if size not in ('db', 'dw', 'dd'):
             raise Exception('Error: unknown global size: {}'.format(size))
 
         normalised_data = []
@@ -83,7 +86,7 @@ class i086Visitor(Visitor):
             )
 
         if subj in self.defined_structs.keys():
-            return 4  # Pointer
+            return 2  # Pointer
             # return self.defined_structs[type].size()
 
         else:
@@ -98,14 +101,13 @@ class i086Visitor(Visitor):
 
     def datasize(self, type):
         return {
-            4: 'db',
-            8: 'dd',
+            2: 'db',
+            4: 'dd',
+            8: 'dw',
         }[self.sizeof(type)]
 
 
     def visit_program(self, program: Program):
-        self.writer.writeln('section .text')
-
         if self.write_start:
             self.writer.writeln(ENTRYPOINT)
 
@@ -113,9 +115,9 @@ class i086Visitor(Visitor):
             toplevel.visit(self)
 
         for undefined_function in set(self.undefined_functions):
-            self.writer.writeln('extern {}'.format(undefined_function))
+            pass #self.writer.writeln('extern {}'.format(undefined_function))
 
-        self.writer.writeln('section .data')
+        #self.writer.writeln('section .data')
 
         self.writer.write(self.globals_gen.generate())
 

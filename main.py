@@ -32,7 +32,7 @@ elif ARCH == 'i386':
 elif ARCH == 'i086':
     CC = 'bcc'
     LD = 'ld86'
-    AS = 'nasm -fas86'
+    AS = 'nasm -fbin'
     VISITOR = i086Visitor
 else:
     print(f'Unknown arch: {ARCH}')
@@ -156,14 +156,8 @@ if __name__ == '__main__':
         asm_file = os.path.join(lib_build_dir, 'librl.nasm')
         with open(asm_file, 'w') as f:
             f.write(all_asm)
-
-        librl_object = f'{lib_build_dir}/librl.o'
-
-        cmd = f'{AS} {debug_args} {asm_file} -o {librl_object}'
-        print(cmd)
-        os.system(cmd)
     else:
-        librl_object = ''
+        asm_file = ''
 
     if not args.noextensions:
         ### Compile extensions
@@ -181,21 +175,20 @@ if __name__ == '__main__':
     else:
         ext_objects = []
 
-    ### Assemble source file
-
-    source_object = os.path.join(build_dir, 'out.o')
-
-    cmd = '{} {} {} -o {}'.format(AS, debug_args, out_file, source_object)
-    print(cmd)
-    os.system(cmd)
-
-    ### Link source files
+    ### Assemble source files
 
     if not args.noextensions:
         ld = CC
     else:
         ld = LD
 
-    cmd = '{} {} {} {} -o {}'.format(ld, ' '.join(ext_objects), source_object, librl_object, args.output)
+    combined_file = os.path.join(build_dir, 'combined.nasm')
+
+    with open(combined_file, 'w') as f:
+        for asm in (out_file, asm_file):
+            with open(asm, 'r') as asmf:
+                f.write(asmf.read() + '\n\n')
+
+    cmd = '{} {} -o {}'.format(AS, combined_file, args.output)
     print(cmd)
     os.system(cmd)

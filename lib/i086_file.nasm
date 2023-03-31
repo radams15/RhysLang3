@@ -5,8 +5,11 @@ strlen:
     push bp
 	mov bp, sp
 
+    push bx
+    mov bx, dx
     xor ax, ax
     mov al, [bx]
+    pop bx
 
     mov sp, bp
     pop bp
@@ -17,10 +20,10 @@ cstr:
     push bp
 	mov bp, sp
 
-	push bx
-    add bx, 1
-    mov ax, bx
-    pop bx
+	push dx
+    add dx, 1
+    mov ax, dx
+    pop dx
 
     mov sp, bp
     pop bp
