@@ -69,6 +69,13 @@ class i386Visitor(Visitor):
         self.globals_gen = i386GlobalGenerator()
         self.scope = Scope()
 
+
+    def visit_cif(self, stmt: Cif):
+        if(stmt.token.value in ['linux', 'i386']):
+            stmt.true_stmt.visit(self)
+        elif stmt.false_stmt:
+            stmt.false_stmt.visit(self)
+
     def sizeof(self, subj):
         if subj in self.PRIMITIVES:
             return 4
@@ -119,6 +126,17 @@ class i386Visitor(Visitor):
         self.writer.writeln('section .data')
 
         self.writer.write(self.globals_gen.generate())
+
+    def visit_alloc(self, alloc: Alloc):
+        """
+        Some syntactic sugar to convert 'alloc Type' => 'malloc(sizeof(Type))'
+        """
+        return FunctionCall(
+            Token('IDENTIFIER', 'malloc'),
+            [
+                alloc.size_expr
+            ]
+        ).visit(self)
 
     def visit_struct_def(self, struct: StructDef):
         current_index = 0

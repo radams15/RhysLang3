@@ -15,9 +15,12 @@ _main:
 '''
 
 SYSCALL_TABLE = {
-    'write': 0x9,
+    'write': 0x40,
+    'puts': 0x9,
+    'putc': 0x2,
+    'open': 0x3c, # 0x3c / 0x3d
 
-    'close': -1, # Unknown
+    'close': 0x32,
 
     'exit': 0x4C,
 }
@@ -55,13 +58,20 @@ def write_debug(writer, token):
     pass
     # self.writer.writeln(f'%line {token.source_pos.lineno}+0 test.rl')
 
+class MemoryManager:
+    def __init__(self, top=0xa000):
+        self.top = top
 
+    def alloc(self, length):
+        self.top -= length
+        return self.top
 
 class i086Visitor(Visitor):
     ARG_REGISTERS = ('dx', 'cx', 'bx')
     PRIMITIVES = ('int', 'char', 'str', 'ptr')
     defined_structs = dict()
     label_generator = LabelGenerator()
+    memmgr = MemoryManager()
 
     def __init__(self, writer, write_start):
         super().__init__(writer, write_start)
@@ -70,6 +80,12 @@ class i086Visitor(Visitor):
         self.defined_functions = []
         self.globals_gen = i086GlobalGenerator()
         self.scope = Scope()
+
+    def visit_cif(self, stmt: Cif):
+        if(stmt.token.value == 'dos'):
+            stmt.true_stmt.visit(self)
+        elif stmt.false_stmt:
+            stmt.false_stmt.visit(self)
 
     def sizeof(self, subj):
         if subj in self.PRIMITIVES:
@@ -86,8 +102,15 @@ class i086Visitor(Visitor):
             )
 
         if subj in self.defined_structs.keys():
-            return 2  # Pointer
-            # return self.defined_structs[type].size()
+            datatype = self.defined_structs[subj]
+            return (
+                sum(
+                    [
+                        self.sizeof(data_type)
+                        for name, data_type in datatype.members
+                    ]
+                )
+            )
 
         else:
             raise Exception('Unknown type: {}'.format(subj))
@@ -97,6 +120,7 @@ class i086Visitor(Visitor):
         self.defined_functions = []
         self.globals_gen = i086GlobalGenerator()
         self.label_generator = LabelGenerator()
+        self.memmgr = MemoryManager()
         self.scope = Scope()
 
     def datasize(self, type):
@@ -120,6 +144,17 @@ class i086Visitor(Visitor):
         #self.writer.writeln('section .data')
 
         self.writer.write(self.globals_gen.generate())
+
+    def visit_alloc(self, alloc: Alloc):
+        """
+        Some syntactic sugar to convert 'alloc Type' => 'malloc(sizeof(Type))'
+        """
+        return FunctionCall(
+            Token('IDENTIFIER', 'malloc'),
+            [
+                alloc.size_expr
+            ]
+        ).visit(self)
 
     def visit_struct_def(self, struct: StructDef):
         current_index = 0
@@ -360,7 +395,7 @@ class i086Visitor(Visitor):
         self.writer.writeln(f'mov ax, {const.value}')
 
     def _make_string_array(self, value):
-        return super()._make_string_array(value) + ["'$'"]
+        return super()._make_string_array(value)
 
     def visit_global(self, globl: Global):
         value = globl.value.value
@@ -526,8 +561,6 @@ class i086Visitor(Visitor):
             meth_def = struct_def.get_method(struct_method_call.function.name)
 
             method_fullname = meth_def.name # method_hash(struct_type, struct_type.name, meth_def.args)
-
-            print(method_fullname)
         else:
             struct = self.scope.get(struct_method_call.member)
 

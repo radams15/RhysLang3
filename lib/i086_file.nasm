@@ -28,3 +28,34 @@ cstr:
     mov sp, bp
     pop bp
     ret
+
+
+; fopen(name: str)
+fopen:
+    push bp
+	mov bp, sp
+
+    call cstr
+    mov dx, ax
+
+    mov cx, 0 ; no. bytes to write to new file.
+
+    mov ah, 0x3c
+    mov al, 0x2
+    int 0x21
+
+    jc err
+
+    mov sp, bp
+    pop bp
+    ret
+
+err:
+    mov dx, ErrorOpenMsg
+    mov ah, 0x9
+    int 0x21
+    ret
+
+
+FName: db 'out.txt', 0
+ErrorOpenMsg: db 'Error opening!', '$'

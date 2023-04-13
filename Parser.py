@@ -167,6 +167,10 @@ def block(p):
                'IF PAREN_OPEN expr PAREN_CLOSE block |' +
                'IF PAREN_OPEN expr PAREN_CLOSE block ELSE block |' +
                'IF PAREN_OPEN expr PAREN_CLOSE block ELSE statement |' +
+               'CIF PAREN_OPEN IDENTIFIER PAREN_CLOSE block |' +
+               'CIF PAREN_OPEN IDENTIFIER PAREN_CLOSE block ELSE block |' +
+               'CIF PAREN_OPEN IDENTIFIER PAREN_CLOSE block ELSE statement |' +
+               'CIF PAREN_OPEN IDENTIFIER PAREN_CLOSE block ELSE statement |' +
                'FOR PAREN_OPEN expr SEMICOLON expr SEMICOLON expr PAREN_CLOSE block |' +
                'WHILE PAREN_OPEN expr PAREN_CLOSE block' +
                '')
@@ -178,13 +182,18 @@ def statement(p):
     if len(p) == 5:
         if p[0].name == 'IF':
             return If(p[2], p[4])
+        elif p[0].name == 'CIF':
+            return Cif(p[2], p[4])
         elif p[0].name == 'WHILE':
             return Loop(p[2], p[4])
         else:
             print('UNKNOWN:', p[0])
 
     if len(p) == 7:
-        return If(p[2], p[4], p[6])
+        if p[0].name == 'IF':
+            return If(p[2], p[4], p[6])
+        elif p[0].name == 'CIF':
+            return Cif(p[2], p[4], p[6])
 
     if len(p) == 9:
         init, constraint, inc, body = p[2], p[4], p[6], p[8]
@@ -294,7 +303,7 @@ def term(p):
 @pg.production('factor : PAREN_OPEN expr PAREN_CLOSE | unary_op factor | syscall | alloc | function_call | method_call | primitive | name')
 def factor(p):
     if len(p) == 1: # Const, var name or function call
-        if isinstance(p[0], FunctionCall) or isinstance(p[0], StructMethodCall) or isinstance(p[0], Syscall) or isinstance(p[0], StructGet):
+        if isinstance(p[0], FunctionCall) or isinstance(p[0], StructMethodCall) or isinstance(p[0], Syscall) or isinstance(p[0], StructGet) or isinstance(p[0], Alloc):
             return p[0]
         else:
             if p[0].name in ('INT', 'FLOAT'):
@@ -331,6 +340,8 @@ def syscall(p):
 
 @pg.production('alloc : ALLOC IDENTIFIER')
 def alloc(p):
+    return Alloc(p[1])
+
     """
     Some syntactic sugar to convert 'alloc Type' => 'malloc(sizeof(Type))'
     """

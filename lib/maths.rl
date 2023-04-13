@@ -1,4 +1,4 @@
-fn exponent(a: int, exp: int) -> int {
+fn pow(a: int, exp: int) -> int {
     var out: int = a;
 
     for(var i: int=0 ; i<exp-1 ; i = i + 1){

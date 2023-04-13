@@ -312,6 +312,29 @@ class If(Statement):
     def visit(self, visitor):
         visitor.visit_if(self)
 
+class Alloc(Statement):
+    def __init__(self, type):
+        self.size_expr = FunctionCall(
+                    Token('IDENTIFIER', 'sizeof'),
+                    [
+                        Variable(
+                            type
+                        )
+                    ]
+                )
+
+    def visit(self, visitor):
+        visitor.visit_alloc(self)
+
+class Cif(Statement):
+    def __init__(self, token, true_stmt, false_stmt=None):
+        self.token = token
+        self.true_stmt = true_stmt
+        self.false_stmt = false_stmt
+
+    def visit(self, visitor):
+        visitor.visit_cif(self)
+
 class Ternary(Expression):
     def __init__(self, expr, true_expr, false_expr=None):
         self.expr = expr
@@ -359,7 +382,7 @@ class FunctionCall(Statement):
             self.args = [args]
 
     def visit(self, visitor):
-        visitor.visit_function_call(self)
+        return visitor.visit_function_call(self)
 
 class StructGet(Expression):
     def __init__(self, struct_name, item_name):

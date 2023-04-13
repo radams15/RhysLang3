@@ -6,10 +6,9 @@ class Visitor:
         self.write_start = write_start
 
     def _make_string_array(self, value):
-        print(value)
         str_len = len(re.sub(r'\\(\w)', '\1', value[1:-1]))
         value = unicode_deescape(value[1:-1])
-        return [str_len, *value]
+        return [str_len, *value, '0']
 
     def sizeof(self, item): pass
 
@@ -39,12 +38,14 @@ class Visitor:
 
 
     def visit_variable(self, var: Variable): pass
+    def visit_alloc(self, alloc: Alloc): pass
     def visit_constant(self, const: Constant): pass
     def visit_global(self, globl: Global): pass
     def visit_string(self, string: String): pass
     def visit_declaration(self, decl: Declaration): pass
     def visit_assignment(self, assign: Assignment): pass
     def visit_if(self, stmt: If): pass
+    def visit_cif(self, stmt: Cif): pass
     def visit_ternary(self, stmt: Ternary): pass
     def visit_loop(self, loop: Loop): pass
     def visit_syscall(self, syscall: Syscall): pass

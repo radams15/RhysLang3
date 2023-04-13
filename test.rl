@@ -1,9 +1,11 @@
-global to_write: str = "hello world!\n";
-global to_write2: str = "howdy earth!";
+fn hello(name: str) -> int {
+	var age: int = 5;
 
-fn main() -> int {
-    puts(to_write);
-    puts(to_write2);
+	return age;
+}
 
-    return 1;
+fn main() -> void {
+	var name: str = "rhys";
+	var name2: str = "adams";
+	hello(name2);
 }
